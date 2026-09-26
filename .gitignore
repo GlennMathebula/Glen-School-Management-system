@@ -20,4 +20,16 @@ frontend/build/
 .vscode/
 .idea/
 .DS_Store
-Thumbs.db
+Thumbs.dbbackend/app/generated_pdfs/
+backend/**/__pycache__/
+backend/generated_documents/
+backend/app/generated_assets/
+backend/FINAL_STUDENT_PORTAL_AUDIT.txt
+backend/app/assets/registrar_signature.png
+/backend/.venv/
+/backend/.env
+/backend/app/generated_pdfs/
+/backend/generated_documents/
+/backend/app/generated_assets/
+/backend/FINAL_STUDENT_PORTAL_AUDIT.txt
+/backend/app/assets/registrar_signature.png
