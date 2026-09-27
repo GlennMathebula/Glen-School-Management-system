@@ -1,8 +1,24 @@
-from datetime import date, datetime, time
+from datetime import (
+    date,
+    datetime,
+    time,
+)
 
 from sqlalchemy import text
 
 from app.database import engine
+
+
+# ============================================================
+# ONLINE DELIVERY MODES
+# ============================================================
+
+ONLINE_DELIVERY_MODES = {
+    "online",
+    "hybrid",
+    "blended",
+}
+
 
 # ============================================================
 # COMBINE SESSION DATE + TIME
@@ -50,6 +66,33 @@ def format_timetable_session(
         combine_session_datetime(
             session_date,
             end_time,
+        )
+    )
+
+    delivery_mode = (
+        row[
+            "delivery_mode"
+        ]
+        or ""
+    )
+
+    meeting_link = (
+        row[
+            "meeting_link"
+        ]
+    )
+
+    is_online = (
+        delivery_mode
+        .strip()
+        .lower()
+        in ONLINE_DELIVERY_MODES
+    )
+
+    can_join_online = (
+        is_online
+        and bool(
+            meeting_link
         )
     )
 
@@ -111,9 +154,7 @@ def format_timetable_session(
         ),
 
         "delivery_mode": (
-            row[
-                "delivery_mode"
-            ]
+            delivery_mode
         ),
 
         "venue": (
@@ -123,9 +164,27 @@ def format_timetable_session(
         ),
 
         "meeting_link": (
-            row[
-                "meeting_link"
-            ]
+            meeting_link
+        ),
+
+        "is_online": (
+            is_online
+        ),
+
+        "can_join_online": (
+            can_join_online
+        ),
+
+        "join_online_url": (
+            meeting_link
+            if can_join_online
+            else None
+        ),
+
+        "join_online_label": (
+            "Join Online Class"
+            if can_join_online
+            else None
         ),
 
         "notes": (
@@ -494,8 +553,6 @@ def get_student_timetable(
                 session
             )
 
-    # Past should show most recent first.
-
     past_sessions.reverse()
 
     # --------------------------------------------------------
@@ -591,6 +648,18 @@ def get_student_timetable(
             "past_sessions": (
                 len(
                     past_sessions
+                )
+            ),
+
+            "online_sessions": (
+                len(
+                    [
+                        session
+                        for session in all_sessions
+                        if session[
+                            "is_online"
+                        ]
+                    ]
                 )
             ),
         },
