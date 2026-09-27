@@ -36,6 +36,12 @@ from app.staff_auth_dependency import (
     require_facilitator,
 )
 
+from app.models.facilitator_notifications import (
+    FacilitatorSessionNotificationRequest,
+)
+from app.services.facilitator_session_notification_service import (
+    notify_learners_about_session,
+)
 router = APIRouter(
     prefix="/api/staff/facilitator",
     tags=[
@@ -366,7 +372,7 @@ def facilitator_sync_timetable_to_google_calendar(
 
     try:
 
-        result = (
+        sync_result = (
             sync_facilitator_timetable_to_google(
                 staff_account_id=(
                     current_staff[
@@ -384,13 +390,47 @@ def facilitator_sync_timetable_to_google_calendar(
             )
         )
 
+        notification_result = None
+
+        delivery_mode = (
+            sync_result.get(
+                "delivery_mode"
+            )
+            or ""
+        ).strip().lower()
+
+        if delivery_mode in {
+            "online",
+            "hybrid",
+            "blended",
+        }:
+
+            notification_result = (
+                notify_learners_about_session(
+                    staff_code=(
+                        current_staff[
+                            "staff_code"
+                        ]
+                    ),
+                    timetable_session_id=(
+                        timetable_session_id
+                    ),
+                    force_resend=False,
+                )
+            )
+
         return {
             "success": True,
             "message": (
                 "Timetable session synced "
                 "to Google Calendar successfully."
             ),
-            "data": result,
+            "calendar": (
+                sync_result
+            ),
+            "learner_notifications": (
+                notification_result
+            ),
         }
 
     except ValueError as error:
@@ -417,7 +457,6 @@ def facilitator_sync_timetable_to_google_calendar(
                 "be synced to Google Calendar."
             ),
         ) from error
-
 # ============================================================
 # FACILITATOR CLASS TIMETABLE
 # ============================================================
@@ -883,5 +922,72 @@ def facilitator_submit_attendance(
             detail=(
                 "Attendance could not "
                 "be submitted."
+            ),
+        ) from error
+    
+# ============================================================
+# EMAIL LEARNERS ABOUT TIMETABLE SESSION
+# ============================================================
+
+@router.post(
+    "/timetable/{timetable_session_id}/notify-learners"
+)
+def facilitator_notify_learners(
+    timetable_session_id: str,
+    payload: FacilitatorSessionNotificationRequest,
+    current_staff: dict = Depends(
+        require_facilitator
+    ),
+):
+
+    try:
+
+        result = (
+            notify_learners_about_session(
+                staff_code=(
+                    current_staff[
+                        "staff_code"
+                    ]
+                ),
+                timetable_session_id=(
+                    timetable_session_id
+                ),
+                force_resend=(
+                    payload.force_resend
+                ),
+            )
+        )
+
+        return {
+            "success": True,
+            "message": (
+                "Learner email notification "
+                "process completed."
+            ),
+            "data": result,
+        }
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(
+                error
+            ),
+        ) from error
+
+    except Exception as error:
+
+        print(
+            "ERROR: Learner timetable "
+            "notification failed: "
+            f"{error}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Learners could not be "
+                "notified."
             ),
         ) from error
