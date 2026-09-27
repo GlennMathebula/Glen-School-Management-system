@@ -46,6 +46,9 @@ from app.student_portal_routes import (
 from app.student_settings_routes import (
     router as student_settings_router,
 )
+from app.learning_resource_routes import (
+    router as learning_resource_router,
+)
 from app.student_support_routes import (
     router as student_support_router,
 )
@@ -126,6 +129,10 @@ app.include_router(
 
 app.include_router(
     google_calendar_router
+)
+
+app.include_router(
+    learning_resource_router
 )
 
 # ============================================================
