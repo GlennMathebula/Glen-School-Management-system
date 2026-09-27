@@ -7,6 +7,12 @@ from app.database import (
 from app.database_inspector import (
     get_database_tables,
 )
+from app.facilitator_routes import (
+    router as facilitator_router,
+)
+from app.google_calendar_routes import (
+    router as google_calendar_router,
+)
 from app.payfast_routes import (
     router as payfast_router,
 )
@@ -114,6 +120,13 @@ app.include_router(
     staff_auth_router
 )
 
+app.include_router(
+    facilitator_router
+)
+
+app.include_router(
+    google_calendar_router
+)
 
 # ============================================================
 # HOME

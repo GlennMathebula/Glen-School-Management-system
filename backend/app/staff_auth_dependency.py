@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 from fastapi import (
     Depends,
     HTTPException,
@@ -186,3 +188,145 @@ def get_current_staff(
             )
         ),
     }
+
+
+# ============================================================
+# REQUIRE STAFF ROLE
+# ============================================================
+
+def require_staff_role(
+    *allowed_roles: str,
+) -> Callable:
+
+    normalised_roles = {
+        str(
+            role
+        ).strip().upper()
+        for role in allowed_roles
+        if role
+    }
+
+    if not normalised_roles:
+
+        raise ValueError(
+            "At least one staff role "
+            "must be supplied."
+        )
+
+    def role_dependency(
+        current_staff: dict = Depends(
+            get_current_staff
+        ),
+    ) -> dict:
+
+        role_code = str(
+            current_staff.get(
+                "role_code"
+            )
+            or ""
+        ).strip().upper()
+
+        if (
+            role_code
+            not in normalised_roles
+        ):
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "You do not have permission "
+                    "to access this staff area."
+                ),
+            )
+
+        return current_staff
+
+    return role_dependency
+
+
+# ============================================================
+# FACILITATOR ACCESS
+# ============================================================
+
+require_facilitator = (
+    require_staff_role(
+        "FACILITATOR"
+    )
+)
+
+
+# ============================================================
+# ASSESSOR ACCESS
+# ============================================================
+
+require_assessor = (
+    require_staff_role(
+        "ASSESSOR"
+    )
+)
+
+
+# ============================================================
+# MODERATOR ACCESS
+# ============================================================
+
+require_moderator = (
+    require_staff_role(
+        "MODERATOR"
+    )
+)
+
+
+# ============================================================
+# ADMIN ACCESS
+# ============================================================
+
+require_admin = (
+    require_staff_role(
+        "ADMIN"
+    )
+)
+
+
+# ============================================================
+# CFO ACCESS
+# ============================================================
+
+require_cfo = (
+    require_staff_role(
+        "CFO"
+    )
+)
+
+
+# ============================================================
+# CEO ACCESS
+# ============================================================
+
+require_ceo = (
+    require_staff_role(
+        "CEO"
+    )
+)
+
+
+# ============================================================
+# PRINCIPAL ACCESS
+# ============================================================
+
+require_principal = (
+    require_staff_role(
+        "PRINCIPAL"
+    )
+)
+
+
+# ============================================================
+# HR ACCESS
+# ============================================================
+
+require_hr = (
+    require_staff_role(
+        "HR"
+    )
+)
