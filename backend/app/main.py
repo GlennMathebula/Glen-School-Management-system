@@ -49,11 +49,23 @@ from app.student_settings_routes import (
 from app.learning_resource_routes import (
     router as learning_resource_router,
 )
+from app.staff_communication_routes import (
+    router as staff_communication_router,
+)
 from app.student_support_routes import (
     router as student_support_router,
 )
+from app.staff_notification_routes import (
+    router as staff_notification_router,
+)
 from app.utils.sa_id import (
     validate_sa_id,
+)
+from app.staff_profile_routes import (
+    router as staff_profile_router,
+)
+from app.staff_permission_routes import (
+    router as staff_permission_router,
 )
 
 # ============================================================
@@ -135,6 +147,20 @@ app.include_router(
     learning_resource_router
 )
 
+app.include_router(
+    staff_communication_router
+)
+
+app.include_router(
+    staff_notification_router
+)
+
+app.include_router(
+    staff_profile_router
+)
+app.include_router(
+    staff_permission_router
+)
 # ============================================================
 # HOME
 # ============================================================

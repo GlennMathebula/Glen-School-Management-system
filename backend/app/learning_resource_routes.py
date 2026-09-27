@@ -33,6 +33,10 @@ from app.student_auth_dependency import (
     require_full_student_access,
 )
 
+from app.services.learning_resource_ai_service import (
+    generate_ai_notes_from_resource,
+    restore_learning_resource,
+)
 
 # ============================================================
 # ROUTER
@@ -688,6 +692,98 @@ def facilitator_archive_resource(
             ),
         ) from error
 
+# ============================================================
+# FACILITATOR - GENERATE AI STUDY NOTES
+# ============================================================
+
+@router.post(
+    "/api/staff/facilitator/"
+    "learning-resources/"
+    "{resource_id}/generate-ai-notes"
+)
+def facilitator_generate_ai_notes(
+    resource_id: str,
+
+    current_staff: dict = Depends(
+        require_facilitator
+    ),
+):
+
+    try:
+
+        result = (
+            generate_ai_notes_from_resource(
+                staff_code=(
+                    current_staff[
+                        "staff_code"
+                    ]
+                ),
+
+                role_code=(
+                    current_staff[
+                        "role_code"
+                    ]
+                ),
+
+                source_resource_id=(
+                    resource_id
+                ),
+            )
+        )
+
+        return {
+            "success": True,
+
+            "message": (
+                "AI study notes generated "
+                "successfully as a draft. "
+                "Review them before publishing."
+            ),
+
+            "data": (
+                result
+            ),
+        }
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(
+                error
+            ),
+        ) from error
+
+    except RuntimeError as error:
+
+        print(
+            "ERROR: AI learning note "
+            "generation failed: "
+            f"{error}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(
+                error
+            ),
+        ) from error
+
+    except Exception as error:
+
+        print(
+            "ERROR: Unexpected AI learning "
+            "note generation failure: "
+            f"{error}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "AI study notes could "
+                "not be generated."
+            ),
+        ) from error
 
 # ============================================================
 # STUDENT - ALL PUBLISHED RESOURCES
@@ -748,6 +844,76 @@ def student_learning_resources(
             ),
         ) from error
 
+# ============================================================
+# FACILITATOR - RESTORE RESOURCE
+# ============================================================
+
+@router.post(
+    "/api/staff/facilitator/"
+    "learning-resources/"
+    "{resource_id}/restore"
+)
+def facilitator_restore_resource(
+    resource_id: str,
+
+    current_staff: dict = Depends(
+        require_facilitator
+    ),
+):
+
+    try:
+
+        resource = (
+            restore_learning_resource(
+                staff_code=(
+                    current_staff[
+                        "staff_code"
+                    ]
+                ),
+
+                resource_id=(
+                    resource_id
+                ),
+            )
+        )
+
+        return {
+            "success": True,
+
+            "message": (
+                "Learning resource restored "
+                "successfully as a draft."
+            ),
+
+            "data": (
+                resource
+            ),
+        }
+
+    except ValueError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(
+                error
+            ),
+        ) from error
+
+    except Exception as error:
+
+        print(
+            "ERROR: Learning resource "
+            "restore failed: "
+            f"{error}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Learning resource could "
+                "not be restored."
+            ),
+        ) from error
 
 # ============================================================
 # STUDENT - ONE PUBLISHED RESOURCE
