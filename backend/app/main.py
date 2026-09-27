@@ -19,6 +19,9 @@ from app.public_routes import (
 from app.routes import (
     router as core_router,
 )
+from app.staff_auth_routes import (
+    router as staff_auth_router,
+)
 from app.student_card_routes import (
     router as student_card_router,
 )
@@ -89,6 +92,26 @@ app.include_router(
 
 app.include_router(
     student_card_router
+)
+
+app.include_router(
+    student_communications_router
+)
+
+app.include_router(
+    student_support_router
+)
+
+app.include_router(
+    student_settings_router
+)
+
+app.include_router(
+    student_completion_documents_router
+)
+
+app.include_router(
+    staff_auth_router
 )
 
 
@@ -205,15 +228,3 @@ def test_sa_id(
             id_number
         )
     )
-app.include_router(
-    student_communications_router
-)
-app.include_router(
-    student_support_router
-)
-app.include_router(
-    student_settings_router
-)
-app.include_router(
-    student_completion_documents_router
-)
