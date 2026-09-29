@@ -94,41 +94,6 @@ from app.services.facilitator_session_notification_service import (
 # to avoid breaking current clients during backend development.
 # ============================================================
 
-
-from app.services.staff_permission_service import (
-    require_permission,
-)
-
-
-# ============================================================
-# SHARED ACADEMIC PERMISSION GUARDS
-# ============================================================
-
-require_view_staff_profile = (
-    require_permission(
-        "VIEW_STAFF_PROFILE"
-    )
-)
-
-require_view_assigned_classes = (
-    require_permission(
-        "VIEW_ASSIGNED_CLASSES"
-    )
-)
-
-require_view_learners = (
-    require_permission(
-        "VIEW_LEARNERS"
-    )
-)
-
-require_manage_attendance = (
-    require_permission(
-        "MANAGE_ATTENDANCE"
-    )
-)
-
-
 router = APIRouter(
 
     prefix="/api/staff/facilitator",
@@ -162,7 +127,9 @@ router = APIRouter(
 def facilitator_profile(
 
     current_staff: dict = Depends(
-        require_view_staff_profile
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -256,7 +223,9 @@ def facilitator_profile(
 def facilitator_classes(
 
     current_staff: dict = Depends(
-        require_view_assigned_classes
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -344,7 +313,9 @@ def facilitator_classes(
 def facilitator_timetable(
 
     current_staff: dict = Depends(
-        require_view_assigned_classes
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -432,7 +403,9 @@ def facilitator_timetable(
 def facilitator_attendance_history(
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -522,7 +495,9 @@ def facilitator_class_detail(
     class_code: str,
 
     current_staff: dict = Depends(
-        require_view_assigned_classes
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -640,7 +615,9 @@ def facilitator_class_learners(
     class_code: str,
 
     current_staff: dict = Depends(
-        require_view_learners
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -764,7 +741,9 @@ def facilitator_sync_timetable_to_google_calendar(
     timetable_session_id: str,
 
     current_staff: dict = Depends(
-        require_view_assigned_classes
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -964,7 +943,9 @@ def facilitator_class_timetable(
     class_code: str,
 
     current_staff: dict = Depends(
-        require_view_assigned_classes
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1090,7 +1071,9 @@ def facilitator_class_attendance_history(
     class_code: str,
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1216,7 +1199,9 @@ def facilitator_create_attendance_session(
     timetable_session_id: str,
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1382,7 +1367,9 @@ def facilitator_attendance_roster(
     attendance_session_id: str,
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1532,7 +1519,9 @@ def facilitator_capture_attendance(
     payload: FacilitatorAttendanceCaptureRequest,
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1716,7 +1705,9 @@ def facilitator_submit_attendance(
     attendance_session_id: str,
 
     current_staff: dict = Depends(
-        require_manage_attendance
+
+        require_academic_delivery_staff
+
     ),
 
 ):
@@ -1890,7 +1881,9 @@ def facilitator_notify_learners(
     payload: FacilitatorSessionNotificationRequest,
 
     current_staff: dict = Depends(
-        require_view_learners
+
+        require_academic_delivery_staff
+
     ),
 
 ):
