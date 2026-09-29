@@ -21,6 +21,7 @@ def get_facilitator_classes(
             c.cycle_code,
             c.class_group,
             c.facilitator_code,
+            c.assessor_code,
             c.status,
 
             COUNT(
@@ -42,7 +43,10 @@ def get_facilitator_classes(
             ON ts.class_id = c.id
 
         WHERE
-            c.facilitator_code = :staff_code
+            (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         GROUP BY
             c.id,
@@ -52,6 +56,7 @@ def get_facilitator_classes(
             c.cycle_code,
             c.class_group,
             c.facilitator_code,
+            c.assessor_code,
             c.status
 
         ORDER BY
@@ -125,7 +130,10 @@ def get_facilitator_class(
         WHERE
             c.class_code = :class_code
 
-            AND c.facilitator_code = :staff_code
+            AND (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         GROUP BY
             c.id,
@@ -188,7 +196,10 @@ def get_facilitator_class_learners(
         WHERE
             class_code = :class_code
 
-            AND facilitator_code = :staff_code
+            AND (
+                facilitator_code = :staff_code
+                OR assessor_code = :staff_code
+            )
 
         LIMIT 1
         """
@@ -316,7 +327,10 @@ def get_facilitator_timetable(
             ON m.id = ts.module_id
 
         WHERE
-            c.facilitator_code = :staff_code
+            (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
             AND ts.status IN (
                 'Published',
@@ -369,7 +383,10 @@ def get_facilitator_class_timetable(
         WHERE
             class_code = :class_code
 
-            AND facilitator_code = :staff_code
+            AND (
+                facilitator_code = :staff_code
+                OR assessor_code = :staff_code
+            )
 
         LIMIT 1
         """
@@ -481,8 +498,10 @@ def facilitator_owns_timetable_session(
                 AS uuid
             )
 
-            AND c.facilitator_code =
-                :staff_code
+            AND (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         LIMIT 1
         """
@@ -536,8 +555,10 @@ def facilitator_owns_attendance_session(
                 AS uuid
             )
 
-            AND c.facilitator_code =
-                :staff_code
+            AND (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         LIMIT 1
         """

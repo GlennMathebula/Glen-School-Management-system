@@ -77,8 +77,10 @@ def get_facilitator_calendar_session(
                 AS uuid
             )
 
-            AND c.facilitator_code =
-                :staff_code
+            AND (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         LIMIT 1
         """
@@ -560,7 +562,7 @@ def sync_facilitator_timetable_to_google(
 
         raise ValueError(
             "Timetable session not found "
-            "or not assigned to this facilitator."
+            "or not assigned to this academic staff member."
         )
 
     if (

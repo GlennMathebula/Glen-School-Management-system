@@ -16,12 +16,13 @@ from app.services.staff_jwt_service import (
     decode_staff_access_token,
 )
 
+
 # ============================================================
 # STAFF BEARER AUTHENTICATION
 # ============================================================
 
 staff_bearer_scheme = HTTPBearer(
-    auto_error=False
+    auto_error=False,
 )
 
 
@@ -84,14 +85,21 @@ def get_current_staff(
         )
     )
 
+    if not staff_account_id:
+
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "Invalid staff access token."
+            ),
+        )
+
     account = (
         get_staff_account_by_id(
             str(
                 staff_account_id
             )
         )
-        if staff_account_id
-        else None
     )
 
     if not account:
@@ -126,10 +134,15 @@ def get_current_staff(
             ),
         )
 
-    if (
+    employment_status = str(
         account.get(
             "employment_status"
         )
+        or ""
+    ).strip()
+
+    if (
+        employment_status
         != "Active"
     ):
 
@@ -170,11 +183,11 @@ def get_current_staff(
             ]
         ),
 
-        "role_code": (
+        "role_code": str(
             account[
                 "role_code"
             ]
-        ),
+        ).strip().upper(),
 
         "role_name": (
             account[
@@ -245,7 +258,32 @@ def require_staff_role(
 
 
 # ============================================================
-# FACILITATOR ACCESS
+# SHARED ACADEMIC DELIVERY ACCESS
+#
+# FACILITATOR + ASSESSOR
+#
+# Both roles share:
+# - assigned classes
+# - learner lists
+# - timetable
+# - attendance
+# - Google Calendar / Meet
+# - learning resources
+# - academic communications
+#
+# Assessment-specific permissions remain separate.
+# ============================================================
+
+require_academic_delivery_staff = (
+    require_staff_role(
+        "FACILITATOR",
+        "ASSESSOR",
+    )
+)
+
+
+# ============================================================
+# FACILITATOR ONLY ACCESS
 # ============================================================
 
 require_facilitator = (
@@ -256,7 +294,10 @@ require_facilitator = (
 
 
 # ============================================================
-# ASSESSOR ACCESS
+# ASSESSOR ONLY ACCESS
+#
+# Use this only for functions that Facilitators must NOT have,
+# such as assessment capture and submission for moderation.
 # ============================================================
 
 require_assessor = (
@@ -328,5 +369,35 @@ require_principal = (
 require_hr = (
     require_staff_role(
         "HR"
+    )
+)
+
+
+# ============================================================
+# ADMIN + PRINCIPAL ACCESS
+#
+# Useful later for enrollment cycle and academic oversight
+# where both roles require access.
+# ============================================================
+
+require_admin_or_principal = (
+    require_staff_role(
+        "ADMIN",
+        "PRINCIPAL",
+    )
+)
+
+
+# ============================================================
+# EXECUTIVE OVERSIGHT ACCESS
+#
+# Useful later for high-level reports and system oversight.
+# ============================================================
+
+require_executive_oversight = (
+    require_staff_role(
+        "ADMIN",
+        "PRINCIPAL",
+        "CEO",
     )
 )

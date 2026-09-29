@@ -84,8 +84,10 @@ def get_facilitator_attendance_history(
                 ats.id
 
         WHERE
-            c.facilitator_code =
-                :staff_code
+            (
+                c.facilitator_code = :staff_code
+                OR c.assessor_code = :staff_code
+            )
 
         GROUP BY
             ats.id,
@@ -157,8 +159,10 @@ def get_facilitator_class_attendance_history(
         WHERE
             class_code = :class_code
 
-            AND facilitator_code =
-                :staff_code
+            AND (
+                facilitator_code = :staff_code
+                OR assessor_code = :staff_code
+            )
 
         LIMIT 1
         """

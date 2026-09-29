@@ -67,7 +67,13 @@ from app.staff_profile_routes import (
 from app.staff_permission_routes import (
     router as staff_permission_router,
 )
+from app.staff_audit_routes import (
+    router as staff_audit_router,
+)
 
+from app.staff_assessment_routes import (
+    router as staff_assessment_router,
+)
 # ============================================================
 # FASTAPI APP
 # ============================================================
@@ -160,6 +166,12 @@ app.include_router(
 )
 app.include_router(
     staff_permission_router
+)
+app.include_router(
+    staff_audit_router
+)
+app.include_router(
+    staff_assessment_router
 )
 # ============================================================
 # HOME
