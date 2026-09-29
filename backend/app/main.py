@@ -74,6 +74,9 @@ from app.staff_audit_routes import (
 from app.staff_assessment_routes import (
     router as staff_assessment_router,
 )
+from app.staff_dashboard_routes import (
+    router as staff_dashboard_router,
+)
 # ============================================================
 # FASTAPI APP
 # ============================================================
@@ -172,6 +175,9 @@ app.include_router(
 )
 app.include_router(
     staff_assessment_router
+)
+app.include_router(
+    staff_dashboard_router
 )
 # ============================================================
 # HOME
