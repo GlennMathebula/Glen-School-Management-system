@@ -237,9 +237,10 @@ Website: www.glenmoniques.co.za
     # ---------------------------------------------------------
     try:
         send_email(
-            to_email=application["email"],
+            recipient_email=application["email"],
             subject=email_subject,
-            body=email_body,
+            html_body=email_body.replace("\n", "<br>"),
+            text_body=email_body,
             attachment_path=application.get(
                 "pdf_path"
             ),
@@ -362,9 +363,10 @@ Website: www.glenmoniques.co.za
     # ---------------------------------------------------------
     try:
         send_email(
-            to_email=applicant_email,
+            recipient_email=applicant_email,
             subject=email_subject,
-            body=email_body,
+            html_body=email_body.replace("\n", "<br>"),
+            text_body=email_body,
             attachment_path=pdf_path,
         )
 
@@ -653,9 +655,10 @@ Website: www.glenmoniques.co.za
 
                 try:
                     send_email(
-                        to_email=applicant_email,
+                        recipient_email=applicant_email,
                         subject=email_subject,
-                        body=email_body,
+                        html_body=email_body.replace("\n", "<br>"),
+                        text_body=email_body,
                         attachment_path=pdf_path,
                     )
 
@@ -732,9 +735,10 @@ Website: www.glenmoniques.co.za
 
                 try:
                     send_email(
-                        to_email=applicant_email,
+                        recipient_email=applicant_email,
                         subject=email_subject,
-                        body=email_body,
+                        html_body=email_body.replace("\n", "<br>"),
+                        text_body=email_body,
                         attachment_path=pdf_path,
                     )
 
@@ -819,9 +823,10 @@ Website: www.glenmoniques.co.za
 
                 try:
                     send_email(
-                        to_email=applicant_email,
+                        recipient_email=applicant_email,
                         subject=email_subject,
-                        body=email_body,
+                        html_body=email_body.replace("\n", "<br>"),
+                        text_body=email_body,
                         attachment_path=pdf_path,
                     )
 
