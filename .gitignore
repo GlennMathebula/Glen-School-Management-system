@@ -33,3 +33,33 @@ backend/app/assets/registrar_signature.png
 /backend/app/generated_assets/
 /backend/FINAL_STUDENT_PORTAL_AUDIT.txt
 /backend/app/assets/registrar_signature.png
+
+# ============================================================
+# Glen Moniques SMS - local/runtime/generated files
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+.env
+.env.*
+!.env.example
+
+# Generated/runtime files - folders remain available locally
+backend/app/generated_pdfs/
+backend/app/generated_documents/
+backend/app/uploads/
+backend/generated_documents/
+backend/uploads/
+
+# Local maintenance backups
+*.bak
+*.backup-*
+*.before_permissions.bak
+*.*-backup-*
+
+# Temporary backend audit/patch helpers
+backend/audit_*.py
+backend/verify_*.py
+backend/patch_*.py
+backend/apply_*.py

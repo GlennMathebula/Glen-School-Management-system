@@ -107,6 +107,50 @@ from app.staff_admin_system_routes import (
     router as staff_admin_system_router,
 )
 
+
+from app.staff_principal_routes import (
+    router as staff_principal_router,
+)
+
+
+
+from app.staff_finance_routes import (
+    router as staff_finance_router,
+)
+
+
+from app.career_routes import (
+    router as career_router,
+)
+from app.staff_hr_routes import (
+    router as staff_hr_router,
+)
+
+
+
+from app.staff_hr_employment_routes import (
+    router as staff_hr_employment_router,
+)
+
+
+
+from app.staff_admin_completion_management_routes import (
+    router as staff_admin_completion_management_router,
+)
+from app.staff_admin_system_management_routes import (
+    router as staff_admin_system_management_router,
+)
+from app.staff_student_support_routes import (
+    router as staff_student_support_router,
+)
+
+
+
+from app.staff_admin_enrolment_form_routes import (
+    router as staff_admin_enrolment_form_router,
+)
+
+
 app = FastAPI(
     title=(
         "Glen Moniques School Management System"
@@ -377,4 +421,47 @@ app.include_router(
 
 app.include_router(
     staff_admin_system_router
+)
+
+
+
+app.include_router(
+    staff_principal_router
+)
+
+
+
+app.include_router(
+    staff_finance_router
+)
+
+
+app.include_router(
+    career_router
+)
+
+
+app.include_router(
+    staff_hr_router
+)
+
+
+app.include_router(
+    staff_hr_employment_router
+)
+
+app.include_router(
+    staff_admin_completion_management_router
+)
+
+app.include_router(
+    staff_admin_system_management_router
+)
+
+app.include_router(
+    staff_student_support_router
+)
+
+app.include_router(
+    staff_admin_enrolment_form_router
 )
