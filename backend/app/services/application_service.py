@@ -11,6 +11,7 @@ from app.services.pdf_service import (
     generate_outstanding_documents_letter,
     generate_rejection_letter,
 )
+from app.services.application_public_service import enrich_public_application_payload
 from app.services.student_number import generate_student_number
 from app.utils.sa_id import validate_sa_id
 
@@ -21,6 +22,11 @@ from app.utils.sa_id import validate_sa_id
 def create_application(
     application_data: dict,
 ) -> dict:
+
+    application_data = enrich_public_application_payload(
+        dict(application_data)
+    )
+
 
     id_result = validate_sa_id(
         application_data["national_id"]

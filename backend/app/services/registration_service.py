@@ -1735,7 +1735,7 @@ def register_student(
 
             send_email(
 
-                to_email=(
+                recipient_email=(
 
                     student_email
 
@@ -1749,14 +1749,11 @@ def register_student(
 
                 ),
 
-                body=(
-
-                    build_registration_email_body(
-
-                        registration_data
-
-                    )
-
+                html_body=build_registration_email_body(
+                    registration_data
+                ).replace("\n", "<br>"),
+                text_body=build_registration_email_body(
+                    registration_data
                 ),
 
                 attachment_path=(
@@ -2085,7 +2082,7 @@ def resend_proof_of_registration(
 
         send_email(
 
-            to_email=(
+            recipient_email=(
 
                 student_email
 
@@ -2099,14 +2096,11 @@ def resend_proof_of_registration(
 
             ),
 
-            body=(
-
-                build_por_resend_email_body(
-
-                    registration_data
-
-                )
-
+            html_body=build_por_resend_email_body(
+                registration_data
+            ).replace("\n", "<br>"),
+            text_body=build_por_resend_email_body(
+                registration_data
             ),
 
             attachment_path=(

@@ -15,7 +15,12 @@ class ApplicationCreate(BaseModel):
         max_length=100,
     )
 
-    # Glen Moniques current public application flow requires
+    
+    application_cycle: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+# Glen Moniques current public application flow requires
     # a valid 13-digit South African ID number.
     national_id: str = Field(
         min_length=13,
@@ -255,3 +260,16 @@ class ApplicationStatusUpdate(BaseModel):
     )
 
     outstanding_documents: list[str] | None = None
+
+class ApplicationIdentityRequest(BaseModel):
+    student_number: str = Field(
+        min_length=8,
+        max_length=8,
+        pattern=r"^\d{8}$",
+    )
+
+    national_id: str = Field(
+        min_length=13,
+        max_length=13,
+        pattern=r"^\d{13}$",
+    )
