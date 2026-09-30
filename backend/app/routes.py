@@ -7,6 +7,7 @@ from fastapi import (
 from app.models.application import (
     ApplicationCreate,
     ApplicationStatusUpdate,
+    ApplicationIdentityRequest,
 )
 from app.models.registration import (
     RegistrationCreate,
@@ -18,6 +19,7 @@ from app.models.student_auth import (
     StudentPinLogin,
     StudentPinSetup,
 )
+from app.services.application_public_service import verify_public_application_identity
 from app.services.application_service import (
     change_application_status,
     create_application,
@@ -112,9 +114,16 @@ def submit_application(
 )
 def resend_application_acknowledgement(
     student_number: str,
+    identity: ApplicationIdentityRequest,
 ):
 
     try:
+
+        verify_public_application_identity(
+            student_number,
+            identity.national_id,
+        )
+
 
         result = (
             regenerate_and_resend_acknowledgement(
