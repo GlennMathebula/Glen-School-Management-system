@@ -44,7 +44,8 @@ from app.services.student_portal_service import (
     get_student_profile,
 )
 from app.student_auth_dependency import (
-    require_full_student_access,
+    
+    get_current_student,require_full_student_access,
 )
 
 # ============================================================
@@ -778,7 +779,38 @@ def student_password_login(
 )
 def student_pin_login(
     request: StudentPinLogin,
+    current_student: dict = Depends(
+        get_current_student
+    ),
 ):
+
+    if (
+        current_student.get(
+            "login_method"
+        )
+        != "password_pending_pin"
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Password verification is required "
+                "before PIN verification."
+            ),
+        )
+
+    if (
+        request.student_number.strip().upper()
+        != current_student["student_number"].strip().upper()
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "PIN verification must be completed "
+                "for the same student account."
+            ),
+        )
 
     try:
 

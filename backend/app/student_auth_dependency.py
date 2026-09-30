@@ -163,4 +163,31 @@ def require_full_student_access(
             ),
         )
 
+    if not current_student.get(
+        "pin_created"
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You must create your 5-digit PIN "
+                "before accessing the student portal."
+            ),
+        )
+
+    if (
+        current_student.get(
+            "login_method"
+        )
+        != "password+pin"
+    ):
+
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Complete PIN verification before accessing "
+                "the student portal."
+            ),
+        )
+
     return current_student

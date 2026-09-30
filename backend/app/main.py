@@ -486,3 +486,6 @@ from app.public_registration_preview_routes import (
 app.include_router(
     public_registration_preview_router
 )
+
+from app.student_finance_portal_routes import router as student_finance_portal_router
+app.include_router(student_finance_portal_router)

@@ -322,14 +322,14 @@ def create_student_account(
         try:
 
             send_email(
-                to_email=(
+                recipient_email=(
                     student_email
                 ),
                 subject=(
                     "Glen Moniques - "
                     "Student Account"
                 ),
-                body=(
+                html_body=(
                     build_student_account_email(
                         student_number=(
                             student_number
@@ -482,14 +482,14 @@ def reissue_temporary_password(
         try:
 
             send_email(
-                to_email=(
+                recipient_email=(
                     student_email
                 ),
                 subject=(
                     "Glen Moniques - "
                     "New Temporary Password"
                 ),
-                body=(
+                html_body=(
                     build_student_account_email(
                         student_number=(
                             student_number
@@ -920,7 +920,7 @@ def login_with_password(
             ),
 
             login_method=(
-                "password"
+                "password_pending_pin"
             ),
 
             must_change_password=(
@@ -941,7 +941,7 @@ def login_with_password(
         ),
 
         "login_method": (
-            "password"
+            "password_pending_pin"
         ),
 
         "must_change_password": (
@@ -1036,7 +1036,7 @@ def login_with_pin(
             ),
 
             login_method=(
-                "pin"
+                "password+pin"
             ),
 
             must_change_password=False,
@@ -1053,7 +1053,7 @@ def login_with_pin(
         ),
 
         "login_method": (
-            "pin"
+            "password+pin"
         ),
 
         "must_change_password": False,
@@ -1171,7 +1171,7 @@ def change_student_password(
             ),
 
             login_method=(
-                "password"
+                "password_pending_pin"
             ),
 
             must_change_password=False,
