@@ -97,15 +97,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-from app.staff_compliance_records_routes import (
-    router as staff_compliance_records_router,
-)
-
-app.include_router(
-    staff_compliance_records_router
-)
-
-
 from app.staff_report_routes import (
     router as staff_report_router,
 )

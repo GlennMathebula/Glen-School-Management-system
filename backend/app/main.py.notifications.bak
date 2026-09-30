@@ -49,8 +49,14 @@ from app.student_settings_routes import (
 from app.learning_resource_routes import (
     router as learning_resource_router,
 )
+from app.staff_communication_routes import (
+    router as staff_communication_router,
+)
 from app.student_support_routes import (
     router as student_support_router,
+)
+from app.staff_notification_routes import (
+    router as staff_notification_router,
 )
 from app.utils.sa_id import (
     validate_sa_id,
@@ -75,18 +81,6 @@ from app.staff_dashboard_routes import (
 # FASTAPI APP
 # ============================================================
 
-from app.staff_notification_routes import (
-    router as staff_notification_router,
-)
-from app.staff_communications_routes import (
-    router as staff_communications_router,
-)
-from app.staff_academic_management_routes import (
-    router as staff_academic_management_router,
-)
-
-
-
 app = FastAPI(
     title=(
         "Glen Moniques School Management System"
@@ -96,24 +90,6 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
-
-from app.staff_compliance_records_routes import (
-    router as staff_compliance_records_router,
-)
-
-app.include_router(
-    staff_compliance_records_router
-)
-
-
-from app.staff_report_routes import (
-    router as staff_report_router,
-)
-
-app.include_router(
-    staff_report_router
-)
-
 
 
 # ============================================================
@@ -178,6 +154,14 @@ app.include_router(
 
 app.include_router(
     learning_resource_router
+)
+
+app.include_router(
+    staff_communication_router
+)
+
+app.include_router(
+    staff_notification_router
 )
 
 app.include_router(
@@ -308,20 +292,3 @@ def test_sa_id(
             id_number
         )
     )
-
-# ============================================================
-# NORMALIZED STAFF ROUTERS
-# ============================================================
-
-app.include_router(
-    staff_notification_router
-)
-
-app.include_router(
-    staff_communications_router
-)
-
-app.include_router(
-    staff_academic_management_router
-)
-
