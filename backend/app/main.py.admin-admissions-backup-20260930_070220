@@ -87,26 +87,6 @@ from app.staff_academic_management_routes import (
 
 
 
-from app.staff_admin_student_records_routes import (
-    router as staff_admin_student_records_router,
-)
-
-from app.staff_admin_timetable_routes import (
-    router as staff_admin_timetable_router,
-)
-
-from app.staff_admin_eisa_routes import (
-    router as staff_admin_eisa_router,
-)
-
-from app.staff_admin_completion_routes import (
-    router as staff_admin_completion_router,
-)
-
-from app.staff_admin_system_routes import (
-    router as staff_admin_system_router,
-)
-
 app = FastAPI(
     title=(
         "Glen Moniques School Management System"
@@ -116,15 +96,6 @@ app = FastAPI(
     ),
     version="1.0.0",
 )
-
-from app.staff_admissions_routes import (
-    router as staff_admissions_router,
-)
-
-app.include_router(
-    staff_admissions_router
-)
-
 
 from app.staff_compliance_records_routes import (
     router as staff_compliance_records_router,
@@ -354,27 +325,3 @@ app.include_router(
     staff_academic_management_router
 )
 
-
-app.include_router(
-    staff_admin_student_records_router
-)
-
-
-app.include_router(
-    staff_admin_timetable_router
-)
-
-
-app.include_router(
-    staff_admin_eisa_router
-)
-
-
-app.include_router(
-    staff_admin_completion_router
-)
-
-
-app.include_router(
-    staff_admin_system_router
-)
