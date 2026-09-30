@@ -27,7 +27,7 @@ def audit(actor,action,etype,eid,desc,before=None,after=None,meta=None):
 def notify(application_id,subject,body):
     try:
         with engine.connect() as c:r=c.execute(text("SELECT a.email FROM public.career_applications x JOIN public.career_applicants a ON a.id=x.applicant_id WHERE x.id=CAST(:id AS uuid)"),{'id':application_id}).mappings().first()
-        if r:send_email(to_email=r['email'],subject=subject,body=body)
+        if r:send_email(recipient_email=r['email'],subject=subject,html_body=body)
     except Exception as e:print(f'WARNING: HR applicant email failed: {e}')
 
 def dashboard():

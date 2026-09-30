@@ -465,3 +465,24 @@ app.include_router(
 app.include_router(
     staff_admin_enrolment_form_router
 )
+
+# ============================================================
+# PUBLIC APPLICATION SUPPORT
+# ============================================================
+from app.application_public_support_routes import (
+    router as application_public_support_router,
+)
+
+app.include_router(
+    application_public_support_router
+)
+# ============================================================
+# PUBLIC REGISTRATION PREVIEW / VERIFICATION
+# ============================================================
+from app.public_registration_preview_routes import (
+    router as public_registration_preview_router,
+)
+
+app.include_router(
+    public_registration_preview_router
+)

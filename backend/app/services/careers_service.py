@@ -92,7 +92,7 @@ def submit_application(*,applicant_id,application_id):
         c.execute(text("INSERT INTO public.career_application_history(application_id,old_status,new_status,note,changed_by_type,changed_by_reference) VALUES(CAST(:id AS uuid),'Draft','Received','Application submitted by applicant.','APPLICANT',:a)"),{'id':application_id,'a':applicant_id})
         person=c.execute(text("SELECT email,first_name,last_name FROM public.career_applicants WHERE id=CAST(:a AS uuid)"),{'a':applicant_id}).mappings().first()
     if person:
-        try: send_email(to_email=person['email'],subject='Glen Moniques Careers - Application Received',body=f"Dear {person['first_name']} {person['last_name']},\n\nYour application {r['application_number']} for {a['job_title']} has been received.\n\nKind regards,\nGlen Moniques (Pty) Ltd")
+        try: send_email(recipient_email=person['email'],subject='Glen Moniques Careers - Application Received',html_body=f"Dear {person['first_name']} {person['last_name']},\n\nYour application {r['application_number']} for {a['job_title']} has been received.\n\nKind regards,\nGlen Moniques (Pty) Ltd")
         except Exception as e: print(f'WARNING: Careers acknowledgement email failed: {e}')
     return dict(r)
 

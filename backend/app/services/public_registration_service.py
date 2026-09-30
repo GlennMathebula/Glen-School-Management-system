@@ -216,7 +216,8 @@ def verify_registration_identity(
     )
 
     if (
-        application_middle_name
+        supplied_second_name
+        and application_middle_name
         != supplied_second_name
     ):
 
