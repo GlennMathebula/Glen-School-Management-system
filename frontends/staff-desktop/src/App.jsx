@@ -1,4 +1,4 @@
-import {
+﻿import {
   useEffect,
   useMemo,
   useState,
@@ -135,7 +135,7 @@ function displayValue(value) {
               : String(nested)
           }`,
       )
-      .join(" · ");
+      .join(" Â· ");
   }
 
   return String(value);
@@ -653,7 +653,7 @@ function LoginFlow() {
     <div className="login-page">
       <section className="login-brand">
         <img
-          src="/glen-moniques-logo.png"
+          src="./glen-moniques-logo.png"
           alt="Glen Moniques"
         />
 
@@ -1287,7 +1287,7 @@ function DashboardPage({
           <p>
             {staff.job_title ||
               "Staff"}{" "}
-            ·{" "}
+            Â·{" "}
             {staff.department ||
               "Glen Moniques"}
           </p>
@@ -1596,7 +1596,7 @@ function StudentRecordsPage({token}) {
                 </span>
                 <small>
                   {item.course_name || item.course_code || "No registration"}
-                  {" · "}
+                  {" Â· "}
                   {item.registration_status || item.app_status || "—"}
                 </small>
               </button>
@@ -2120,7 +2120,7 @@ function DesktopShell() {
     {
       label: "System Management",
       path: "/system",
-      icon: "⚙",
+      icon: "âš™",
       show: any([
         "MANAGE_SYSTEM_SETTINGS",
         "MANAGE_STAFF_ACCOUNTS",
@@ -2487,7 +2487,7 @@ function DesktopShell() {
       <aside className="sidebar">
         <div className="brand">
           <img
-            src="/glen-moniques-logo.png"
+            src="./glen-moniques-logo.png"
             alt="Glen Moniques"
           />
 
@@ -2880,7 +2880,7 @@ export default function App() {
     return (
       <div className="splash">
         <img
-          src="/glen-moniques-logo.png"
+          src="./glen-moniques-logo.png"
           alt="Glen Moniques"
         />
         <strong>
@@ -2898,3 +2898,4 @@ export default function App() {
 
   return <DesktopShell />;
 }
+

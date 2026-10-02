@@ -63,3 +63,5 @@ backend/audit_*.py
 backend/verify_*.py
 backend/patch_*.py
 backend/apply_*.py
+
+frontends/staff-desktop/release/

@@ -10,7 +10,9 @@
     "dev:desktop": "wait-on http://127.0.0.1:5176 && electron . --dev",
     "dev": "concurrently -k \"npm:dev:web\" \"npm:dev:desktop\"",
     "build": "vite build",
-    "desktop": "npm run build && electron ."
+    "desktop": "npm run build && electron .",
+    "pack:win": "npm run build && electron-builder --win dir --x64",
+    "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -21,7 +23,42 @@
     "@vitejs/plugin-react": "^6.1.1",
     "concurrently": "^10.0.5",
     "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
     "vite": "^8.3.1",
     "wait-on": "^9.5.1"
+  },
+  "author": "GLEN MONIQUES (PTY) LTD",
+  "build": {
+    "appId": "za.co.glenmoniques.staff",
+    "productName": "Glen Moniques Staff",
+    "asar": true,
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Glen Moniques Staff",
+      "artifactName": "Glen_Moniques_Staff_Setup_${version}.${ext}"
+    }
   }
 }
