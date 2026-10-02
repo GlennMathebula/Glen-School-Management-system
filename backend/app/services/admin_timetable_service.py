@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date
 
@@ -153,14 +153,14 @@ def update_timetable_session_status(
                 """
                 UPDATE public.timetable_sessions
                 SET
-                    status = :new_status,
+                    status = CAST(:new_status AS varchar),
                     published_at = CASE
-                        WHEN :new_status = 'Published'
+                        WHEN CAST(:new_status AS varchar) = 'Published'
                         THEN COALESCE(published_at, NOW())
                         ELSE published_at
                     END,
                     cancelled_at = CASE
-                        WHEN :new_status = 'Cancelled'
+                        WHEN CAST(:new_status AS varchar) = 'Cancelled'
                         THEN COALESCE(cancelled_at, NOW())
                         ELSE cancelled_at
                     END
@@ -182,3 +182,248 @@ def update_timetable_session_status(
 
     return dict(row)
 
+
+
+
+# ============================================================
+# ADMIN TIMETABLE CRUD
+# ============================================================
+
+ALLOWED_DELIVERY_MODES = {"Physical", "Online", "Blended"}
+
+def _resolve_class(connection, class_code: str) -> dict:
+    class_code = str(class_code or "").strip()
+    if not class_code:
+        raise ValueError("Class code is required.")
+    row = connection.execute(
+        text("""
+            SELECT id, class_code, class_name, course_code, cycle_code, status
+            FROM public.classes
+            WHERE class_code = :class_code
+            LIMIT 1
+        """),
+        {"class_code": class_code},
+    ).mappings().first()
+    if not row:
+        raise ValueError("Class was not found.")
+    return dict(row)
+
+def _resolve_module(connection, *, course_code: str, module_code: str | None):
+    module_code = str(module_code or "").strip()
+    if not module_code:
+        return None
+    row = connection.execute(
+        text("""
+            SELECT id, module_code, module_name, course_code
+            FROM public.modules
+            WHERE module_code = :module_code
+              AND course_code = :course_code
+            LIMIT 1
+        """),
+        {"module_code": module_code, "course_code": course_code},
+    ).mappings().first()
+    if not row:
+        raise ValueError("Module was not found for the selected class course.")
+    return dict(row)
+
+def _validate_session_values(*, start_time, end_time, delivery_mode: str, status: str):
+    if start_time is not None and end_time is not None and end_time <= start_time:
+        raise ValueError("Session end time must be after start time.")
+    if delivery_mode not in ALLOWED_DELIVERY_MODES:
+        raise ValueError("Delivery mode must be Physical, Online or Blended.")
+    if status not in ALLOWED_SESSION_STATUSES:
+        raise ValueError("Status must be Draft, Published or Cancelled.")
+
+def get_timetable_options() -> dict:
+    with engine.connect() as connection:
+        classes = connection.execute(
+            text("""
+                SELECT id, class_code, class_name, course_code, cycle_code, status
+                FROM public.classes
+                ORDER BY cycle_code, course_code, class_code
+            """)
+        ).mappings().all()
+        modules = connection.execute(
+            text("""
+                SELECT id, course_code, module_code, module_name, module_type, status
+                FROM public.modules
+                ORDER BY course_code, module_type, module_code
+            """)
+        ).mappings().all()
+    return {
+        "classes": [dict(row) for row in classes],
+        "modules": [dict(row) for row in modules],
+        "delivery_modes": sorted(ALLOWED_DELIVERY_MODES),
+        "statuses": ["Draft", "Published", "Cancelled"],
+    }
+
+def create_timetable_session(
+    *,
+    actor_staff_code: str,
+    class_code: str,
+    module_code: str | None,
+    session_title: str | None,
+    session_date,
+    start_time,
+    end_time,
+    delivery_mode: str,
+    venue: str | None,
+    meeting_link: str | None,
+    notes: str | None,
+    status: str,
+) -> dict:
+    delivery_mode = str(delivery_mode or "Physical").strip().title()
+    status = str(status or "Draft").strip().title()
+    _validate_session_values(
+        start_time=start_time,
+        end_time=end_time,
+        delivery_mode=delivery_mode,
+        status=status,
+    )
+    with engine.begin() as connection:
+        class_record = _resolve_class(connection, class_code)
+        module_record = _resolve_module(
+            connection,
+            course_code=class_record["course_code"],
+            module_code=module_code,
+        )
+        row = connection.execute(
+            text("""
+                INSERT INTO public.timetable_sessions (
+                    class_id, module_id, session_title, session_date,
+                    start_time, end_time, delivery_mode, venue,
+                    meeting_link, notes, status, created_by,
+                    published_at, cancelled_at, updated_at
+                )
+                VALUES (
+                    CAST(:class_id AS uuid),
+                    CASE WHEN :module_id IS NULL THEN NULL ELSE CAST(:module_id AS uuid) END,
+                    :session_title, :session_date, :start_time, :end_time,
+                    :delivery_mode, :venue, :meeting_link, :notes, :status,
+                    :created_by,
+                    CASE WHEN :status = 'Published' THEN NOW() ELSE NULL END,
+                    CASE WHEN :status = 'Cancelled' THEN NOW() ELSE NULL END,
+                    NOW()
+                )
+                RETURNING *
+            """),
+            {
+                "class_id": str(class_record["id"]),
+                "module_id": str(module_record["id"]) if module_record else None,
+                "session_title": str(session_title or "").strip() or None,
+                "session_date": session_date,
+                "start_time": start_time,
+                "end_time": end_time,
+                "delivery_mode": delivery_mode,
+                "venue": str(venue or "").strip() or None,
+                "meeting_link": str(meeting_link or "").strip() or None,
+                "notes": str(notes or "").strip() or None,
+                "status": status,
+                "created_by": actor_staff_code,
+            },
+        ).mappings().one()
+    return dict(row)
+
+def update_timetable_session(*, timetable_session_id: str, changes: dict) -> dict:
+    timetable_session_id = str(timetable_session_id or "").strip()
+    if not timetable_session_id:
+        raise ValueError("Timetable session ID is required.")
+    with engine.begin() as connection:
+        current = connection.execute(
+            text("""
+                SELECT ts.*, c.class_code, c.course_code
+                FROM public.timetable_sessions ts
+                JOIN public.classes c ON c.id = ts.class_id
+                WHERE ts.id = CAST(:session_id AS uuid)
+                LIMIT 1
+            """),
+            {"session_id": timetable_session_id},
+        ).mappings().first()
+        if not current:
+            raise ValueError("Timetable session was not found.")
+        class_record = _resolve_class(
+            connection,
+            changes.get("class_code") or current["class_code"],
+        )
+        if "module_code" in changes:
+            module_record = _resolve_module(
+                connection,
+                course_code=class_record["course_code"],
+                module_code=changes.get("module_code"),
+            )
+            module_id = str(module_record["id"]) if module_record else None
+        else:
+            module_id = str(current["module_id"]) if current["module_id"] else None
+        start_time = changes.get("start_time", current["start_time"])
+        end_time = changes.get("end_time", current["end_time"])
+        delivery_mode = str(
+            changes.get("delivery_mode", current["delivery_mode"]) or "Physical"
+        ).strip().title()
+        status = str(current["status"] or "Draft").strip().title()
+        _validate_session_values(
+            start_time=start_time,
+            end_time=end_time,
+            delivery_mode=delivery_mode,
+            status=status,
+        )
+        row = connection.execute(
+            text("""
+                UPDATE public.timetable_sessions
+                SET
+                    class_id = CAST(:class_id AS uuid),
+                    module_id = CASE WHEN :module_id IS NULL THEN NULL ELSE CAST(:module_id AS uuid) END,
+                    session_title = :session_title,
+                    session_date = :session_date,
+                    start_time = :start_time,
+                    end_time = :end_time,
+                    delivery_mode = :delivery_mode,
+                    venue = :venue,
+                    meeting_link = :meeting_link,
+                    notes = :notes,
+                    updated_at = NOW()
+                WHERE id = CAST(:session_id AS uuid)
+                RETURNING *
+            """),
+            {
+                "class_id": str(class_record["id"]),
+                "module_id": module_id,
+                "session_title": changes.get("session_title", current["session_title"]),
+                "session_date": changes.get("session_date", current["session_date"]),
+                "start_time": start_time,
+                "end_time": end_time,
+                "delivery_mode": delivery_mode,
+                "venue": changes.get("venue", current["venue"]),
+                "meeting_link": changes.get("meeting_link", current["meeting_link"]),
+                "notes": changes.get("notes", current["notes"]),
+                "session_id": timetable_session_id,
+            },
+        ).mappings().one()
+    return dict(row)
+
+def delete_timetable_session(timetable_session_id: str) -> dict:
+    timetable_session_id = str(timetable_session_id or "").strip()
+    with engine.begin() as connection:
+        current = connection.execute(
+            text("""
+                SELECT id, session_title, status
+                FROM public.timetable_sessions
+                WHERE id = CAST(:session_id AS uuid)
+                LIMIT 1
+            """),
+            {"session_id": timetable_session_id},
+        ).mappings().first()
+        if not current:
+            raise ValueError("Timetable session was not found.")
+        if current["status"] != "Draft":
+            raise ValueError(
+                "Only Draft timetable sessions can be deleted. "
+                "Published sessions should be Cancelled."
+            )
+        connection.execute(
+            text("""
+                DELETE FROM public.timetable_sessions
+                WHERE id = CAST(:session_id AS uuid)
+            """),
+            {"session_id": timetable_session_id},
+        )
+    return dict(current)

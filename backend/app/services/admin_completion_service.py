@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import text
 
@@ -198,3 +198,38 @@ def get_completion_record(
 
     return None
 
+
+
+# ============================================================
+# V3.8 DEFAULT PASS MARK FALLBACK
+# ============================================================
+
+from app.services.assessment_settings_service import (
+    get_default_assessment_pass_mark as _v38_default_pass_mark,
+)
+
+
+def _is_competent(
+    result,
+    mark,
+    pass_mark,
+    status,
+) -> bool:
+    if status != "Published":
+        return False
+
+    value = str(result or "").strip().upper()
+
+    if value in COMPETENT_RESULTS:
+        return True
+
+    if mark is None:
+        return False
+
+    if pass_mark is None:
+        pass_mark = _v38_default_pass_mark()
+
+    try:
+        return float(mark) >= float(pass_mark)
+    except (TypeError, ValueError):
+        return False

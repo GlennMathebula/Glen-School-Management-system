@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from uuid import UUID
 
@@ -465,3 +465,46 @@ def replace_role_permissions(
         "role_code": role_code,
         "permissions": clean,
     }
+
+
+
+# ============================================================
+# ADMIN STAFF ACCOUNT OPTIONS
+# ============================================================
+
+def list_staff_employee_options() -> list[dict]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("""
+                SELECT
+                    e.id AS employee_id,
+                    e.employee_number,
+                    e.first_name,
+                    e.middle_name,
+                    e.last_name,
+                    e.email,
+                    e.job_title,
+                    e.department,
+                    e.employment_status,
+                    e.requires_system_access,
+                    sa.staff_code
+                FROM public.employees e
+                LEFT JOIN public.staff_accounts sa
+                    ON sa.employee_id = e.id
+                WHERE e.employment_status = 'Active'
+                  AND e.requires_system_access = TRUE
+                ORDER BY e.last_name, e.first_name
+            """)
+        ).mappings().all()
+    return [dict(row) for row in rows]
+
+def list_staff_permission_catalog() -> list[dict]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("""
+                SELECT *
+                FROM public.staff_permissions
+                ORDER BY permission_code
+            """)
+        ).mappings().all()
+    return [dict(row) for row in rows]

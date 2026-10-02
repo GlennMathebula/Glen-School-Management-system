@@ -1,4 +1,4 @@
-﻿from datetime import date, datetime
+from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -2181,3 +2181,289 @@ def remove_registration_from_class(
 
     return record
 
+
+
+# ============================================================
+# V3.6 RUNTIME FIXES
+# ============================================================
+
+from sqlalchemy.exc import OperationalError as _V36OperationalError
+
+
+_v36_original_get_cycles = get_cycles
+_v36_original_get_courses = get_courses
+_v36_original_get_academic_staff_options = (
+    get_academic_staff_options
+)
+
+
+def _v36_retry_read(callback):
+    try:
+        return callback()
+    except _V36OperationalError:
+        engine.dispose()
+        return callback()
+
+
+def get_cycles() -> list[dict]:
+    return _v36_retry_read(
+        _v36_original_get_cycles
+    )
+
+
+def get_courses() -> list[dict]:
+    return _v36_retry_read(
+        _v36_original_get_courses
+    )
+
+
+def get_academic_staff_options() -> list[dict]:
+    return _v36_retry_read(
+        _v36_original_get_academic_staff_options
+    )
+
+
+def get_classes(
+    *,
+    cycle_code: str | None = None,
+    course_code: str | None = None,
+) -> list[dict]:
+    cycle_code = _clean_optional_code(
+        cycle_code
+    )
+    course_code = _clean_optional_code(
+        course_code
+    )
+
+    filters = []
+    params = {}
+
+    if cycle_code:
+        filters.append(
+            "cl.cycle_code = :cycle_code"
+        )
+        params["cycle_code"] = cycle_code
+
+    if course_code:
+        filters.append(
+            "cl.course_code = :course_code"
+        )
+        params["course_code"] = course_code
+
+    where_sql = (
+        "WHERE " + " AND ".join(filters)
+        if filters
+        else ""
+    )
+
+    statement = text(
+        f"""
+        SELECT
+            cl.id,
+            cl.class_code,
+            cl.class_name,
+            cl.course_code,
+            c.course_name,
+            cl.cycle_code,
+            cy.cycle_name,
+            cl.class_group,
+            cl.facilitator_code,
+            CONCAT_WS(
+                ' ',
+                ef.first_name,
+                ef.last_name
+            ) AS facilitator_name,
+            cl.assessor_code,
+            CONCAT_WS(
+                ' ',
+                ea.first_name,
+                ea.last_name
+            ) AS assessor_name,
+            cl.status,
+            cl.created_at,
+            cl.updated_at,
+
+            COUNT(
+                DISTINCT ce.id
+            ) FILTER (
+                WHERE ce.status = 'Active'
+            ) AS active_learner_count
+
+        FROM public.classes cl
+
+        JOIN public.courses c
+            ON c.course_code =
+               cl.course_code
+
+        LEFT JOIN public.cycles cy
+            ON cy.cycle_code =
+               cl.cycle_code
+
+        LEFT JOIN public.staff_accounts saf
+            ON saf.staff_code =
+               cl.facilitator_code
+
+        LEFT JOIN public.employees ef
+            ON ef.id =
+               saf.employee_id
+
+        LEFT JOIN public.staff_accounts saa
+            ON saa.staff_code =
+               cl.assessor_code
+
+        LEFT JOIN public.employees ea
+            ON ea.id =
+               saa.employee_id
+
+        LEFT JOIN public.class_enrolments ce
+            ON ce.class_id =
+               cl.id
+
+        {where_sql}
+
+        GROUP BY
+            cl.id,
+            c.course_name,
+            cy.cycle_name,
+            ef.first_name,
+            ef.last_name,
+            ea.first_name,
+            ea.last_name
+
+        ORDER BY
+            cl.cycle_code DESC,
+            c.course_name,
+            cl.class_code
+        """
+    )
+
+    def _load():
+        with engine.connect() as connection:
+            rows = connection.execute(
+                statement,
+                params,
+            ).mappings().all()
+
+        return [
+            dict(row)
+            for row in rows
+        ]
+
+    return _v36_retry_read(
+        _load
+    )
+
+
+# ============================================================
+# V3.8 ELIGIBLE-LEARNERS NULL FILTER FIX
+# ============================================================
+
+
+def get_eligible_class_learners(
+    *,
+    class_code: str,
+) -> list[dict]:
+    class_record = _get_class(
+        class_code
+    )
+
+    if not class_record:
+        raise ValueError(
+            "Class not found."
+        )
+
+    filters = [
+        "r.course_code = :course_code",
+        """
+        r.registration_status
+        IN (
+            'Registered',
+            'In Progress'
+        )
+        """,
+        """
+        NOT EXISTS (
+            SELECT 1
+            FROM public.class_enrolments ce
+            WHERE
+                ce.registration_id = r.id
+                AND ce.status = 'Active'
+        )
+        """,
+    ]
+
+    params = {
+        "course_code": class_record[
+            "course_code"
+        ],
+    }
+
+    cycle_code = class_record.get(
+        "cycle_code"
+    )
+
+    if cycle_code:
+        filters.append(
+            """
+            (
+                r.cycle IS NULL
+                OR r.cycle = :cycle_code
+            )
+            """
+        )
+        params["cycle_code"] = cycle_code
+
+    where_sql = " AND ".join(
+        filters
+    )
+
+    statement = text(
+        f"""
+        SELECT
+            r.id AS registration_id,
+            r.student_number,
+            r.registration_status,
+            r.course_code,
+            r.cycle,
+            r.registration_date,
+
+            a.first_name,
+            a.middle_name,
+            a.last_name,
+            a.email,
+            a.cell_number
+
+        FROM public.registrations r
+
+        JOIN public.applications a
+            ON a.student_number =
+               r.student_number
+
+        WHERE
+            {where_sql}
+
+        ORDER BY
+            a.last_name,
+            a.first_name,
+            r.student_number
+        """
+    )
+
+    def _load():
+        with engine.connect() as connection:
+            rows = connection.execute(
+                statement,
+                params,
+            ).mappings().all()
+
+        return [
+            dict(row)
+            for row in rows
+        ]
+
+    if "_v36_retry_read" in globals():
+        return _v36_retry_read(
+            _load
+        )
+
+    return _load()

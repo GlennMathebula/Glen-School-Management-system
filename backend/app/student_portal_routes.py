@@ -15,6 +15,7 @@ from app.services.student_document_service import (
     upload_student_document,
 )
 from app.services.student_portal_service import (
+    get_student_attendance,
     get_student_documents,
     get_student_modules,
     get_student_portal_registration,
@@ -313,6 +314,52 @@ def my_assessment_status(
             status_code=500,
             detail=(
                 "Assessment status could "
+                "not be retrieved."
+            ),
+        )
+
+# ============================================================
+# MY OFFICIAL ATTENDANCE
+# ============================================================
+
+@router.get(
+    "/attendance",
+)
+def my_attendance(
+    current_student: dict = Depends(
+        require_full_student_access
+    ),
+):
+    student_number = current_student[
+        "student_number"
+    ]
+
+    try:
+        attendance = (
+            get_student_attendance(
+                student_number
+            )
+        )
+
+        return {
+            "success": True,
+            "student_number": (
+                student_number
+            ),
+            "data": attendance,
+        }
+
+    except Exception as error:
+        print(
+            "ERROR: Student attendance "
+            "lookup failed: "
+            f"{error}"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Student attendance could "
                 "not be retrieved."
             ),
         )

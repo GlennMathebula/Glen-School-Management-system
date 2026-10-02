@@ -1703,3 +1703,155 @@ def return_summative_assessment(
     return get_summative_assessment(
         assessment_id
     )
+
+# ============================================================
+# V5.5 ASSIGNED MODERATOR QUEUES
+# ============================================================
+
+def get_moderator_module_queue(
+    *,
+    staff_code: str,
+) -> list[dict]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT
+                    mk.id,
+                    mk.attempt_number,
+                    mk.mark,
+                    mk.grade,
+                    mk.result,
+                    mk.status,
+                    mk.assessor_code,
+                    mk.moderator_code,
+                    mk.return_reason,
+                    mk.updated_at,
+                    m.module_code,
+                    m.module_name,
+                    m.module_type,
+                    m.credits,
+                    m.result_format,
+                    m.pass_mark,
+                    r.student_number,
+                    r.course_code,
+                    r.cycle,
+                    a.first_name,
+                    a.middle_name,
+                    a.last_name
+                FROM public.marks mk
+                JOIN public.module_registrations mr
+                    ON mr.id = mk.module_registration_id
+                JOIN public.modules m
+                    ON m.id = mr.module_id
+                JOIN public.registrations r
+                    ON r.id = mr.registration_id
+                JOIN public.applications a
+                    ON a.id = r.application_id
+                WHERE
+                    mk.status = 'Submitted'
+                    AND (
+                        mk.assessor_code IS NULL
+                        OR mk.assessor_code <>
+                            CAST(:staff_code AS varchar)
+                    )
+                    AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM public.class_enrolments ce
+                            JOIN public.classes cl
+                                ON cl.id = ce.class_id
+                            WHERE
+                                ce.registration_id = r.id
+                                AND ce.status = 'Active'
+                                AND cl.moderator_code =
+                                    CAST(:staff_code AS varchar)
+                        )
+                        OR NOT EXISTS (
+                            SELECT 1
+                            FROM public.class_enrolments ce2
+                            JOIN public.classes cl2
+                                ON cl2.id = ce2.class_id
+                            WHERE
+                                ce2.registration_id = r.id
+                                AND ce2.status = 'Active'
+                                AND cl2.moderator_code IS NOT NULL
+                        )
+                    )
+                ORDER BY mk.updated_at ASC
+                """
+            ),
+            {"staff_code": staff_code},
+        ).mappings().all()
+
+    return [dict(row) for row in rows]
+
+
+def get_moderator_summative_queue(
+    *,
+    staff_code: str,
+) -> list[dict]:
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                """
+                SELECT
+                    sa.id,
+                    sa.registration_id,
+                    sa.assessment_type,
+                    sa.attempt_number,
+                    sa.mark,
+                    sa.assessment_date,
+                    sa.result,
+                    sa.status,
+                    sa.assessor_code,
+                    sa.moderator_code,
+                    sa.return_reason,
+                    r.student_number,
+                    r.course_code,
+                    r.cycle,
+                    a.first_name,
+                    a.middle_name,
+                    a.last_name
+                FROM public.summative_assessments sa
+                JOIN public.registrations r
+                    ON r.id = sa.registration_id
+                JOIN public.applications a
+                    ON a.id = r.application_id
+                WHERE
+                    sa.status = 'Submitted'
+                    AND (
+                        sa.assessor_code IS NULL
+                        OR sa.assessor_code <>
+                            CAST(:staff_code AS varchar)
+                    )
+                    AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM public.class_enrolments ce
+                            JOIN public.classes cl
+                                ON cl.id = ce.class_id
+                            WHERE
+                                ce.registration_id = r.id
+                                AND ce.status = 'Active'
+                                AND cl.moderator_code =
+                                    CAST(:staff_code AS varchar)
+                        )
+                        OR NOT EXISTS (
+                            SELECT 1
+                            FROM public.class_enrolments ce2
+                            JOIN public.classes cl2
+                                ON cl2.id = ce2.class_id
+                            WHERE
+                                ce2.registration_id = r.id
+                                AND ce2.status = 'Active'
+                                AND cl2.moderator_code IS NOT NULL
+                        )
+                    )
+                ORDER BY sa.updated_at ASC
+                """
+            ),
+            {"staff_code": staff_code},
+        ).mappings().all()
+
+    return [dict(row) for row in rows]

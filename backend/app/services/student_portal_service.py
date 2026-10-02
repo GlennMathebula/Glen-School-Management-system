@@ -610,3 +610,140 @@ def get_student_documents(
             ),
         },
     }
+
+# ============================================================
+# STUDENT PORTAL - MY OFFICIAL ATTENDANCE
+# ============================================================
+
+def get_student_attendance(
+    student_number: str,
+) -> dict:
+    """
+    Return only official/rendered attendance for the authenticated learner.
+    Draft, returned and submitted-but-not-rendered attendance stays hidden.
+    """
+
+    query = text(
+        """
+        SELECT
+            ats.id AS attendance_session_id,
+            ats.rendered_at,
+
+            ts.id AS timetable_session_id,
+            ts.session_title,
+            ts.session_date,
+            ts.start_time,
+            ts.end_time,
+            ts.delivery_mode,
+            ts.venue,
+
+            cl.class_code,
+            cl.class_name,
+            cl.course_code,
+            cl.class_group,
+
+            ar.attendance_status,
+            ar.minutes_late,
+            ar.notes
+
+        FROM public.attendance_records ar
+
+        JOIN public.registrations r
+            ON r.id = ar.registration_id
+
+        JOIN public.attendance_sessions ats
+            ON ats.id = ar.attendance_session_id
+
+        JOIN public.timetable_sessions ts
+            ON ts.id = ats.timetable_session_id
+
+        JOIN public.classes cl
+            ON cl.id = ts.class_id
+
+        WHERE
+            r.student_number = :student_number
+            AND ats.status = 'Rendered'
+
+        ORDER BY
+            ts.session_date DESC,
+            ts.start_time DESC,
+            ats.rendered_at DESC
+        """
+    )
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            query,
+            {
+                "student_number": student_number,
+            },
+        ).mappings().all()
+
+    records = [
+        dict(row)
+        for row in rows
+    ]
+
+    counts = {
+        "Present": 0,
+        "Late": 0,
+        "Absent": 0,
+        "Excused": 0,
+    }
+
+    for record in records:
+        status = record.get(
+            "attendance_status"
+        )
+
+        if status in counts:
+            counts[status] += 1
+
+    attended = (
+        counts["Present"]
+        + counts["Late"]
+    )
+
+    accountable = (
+        counts["Present"]
+        + counts["Late"]
+        + counts["Absent"]
+    )
+
+    attendance_rate = (
+        round(
+            (
+                attended
+                / accountable
+            )
+            * 100,
+            1,
+        )
+        if accountable
+        else None
+    )
+
+    return {
+        "summary": {
+            "total_sessions": len(
+                records
+            ),
+            "present": counts[
+                "Present"
+            ],
+            "late": counts[
+                "Late"
+            ],
+            "absent": counts[
+                "Absent"
+            ],
+            "excused": counts[
+                "Excused"
+            ],
+            "attended": attended,
+            "attendance_rate": (
+                attendance_rate
+            ),
+        },
+        "records": records,
+    }

@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Glen Moniques Student",
+    "slug": "glen-moniques-student",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/glen-moniques-logo.png",
+    "scheme": "glenmoniquesstudent",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "za.co.glenmoniques.student"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/glen-moniques-logo.png",
+        "backgroundColor": "#102A49"
+      },
+      "package": "za.co.glenmoniques.student"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-document-picker",
+      "expo-image-picker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/glen-moniques-logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#102A49"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

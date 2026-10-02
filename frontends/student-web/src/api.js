@@ -11,3 +11,9 @@ export function uploadAvatar(file,t){const f=new FormData();f.append("avatar",fi
 export const newMessage=(p,t)=>req("/api/student/messages",{method:"POST",body:JSON.stringify(p)},t); export const newSupport=(p,t)=>req("/api/student/support",{method:"POST",body:JSON.stringify(p)},t); export const saveContact=(p,t)=>req("/api/student/settings/contact",{method:"PATCH",body:JSON.stringify(p)},t); export const savePrefs=(p,t)=>req("/api/student/settings/preferences",{method:"PATCH",body:JSON.stringify(p)},t);
 export async function download(path,t,name){const r=await fetch(BASE+path,{headers:{Authorization:`Bearer ${t}`}});if(!r.ok){await parse(r);return}const blob=await r.blob();const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u)}
 export async function blobUrl(path,t){const r=await fetch(BASE+path,{headers:{Authorization:`Bearer ${t}`}});if(!r.ok){await parse(r);return ""}return URL.createObjectURL(await r.blob())}
+export const attendance=t=>req("/api/student/attendance",{},t);
+export const resources=t=>req("/api/student/learning-resources",{},t);
+export const resource=(id,t)=>req(`/api/student/learning-resources/${encodeURIComponent(id)}`,{},t);
+export const completion=t=>req("/api/student/completion-documents",{},t);
+export const requestAvatarReplacement=(reason,t)=>req("/api/student/card/avatar/replacement-request",{method:"POST",body:JSON.stringify({reason})},t);
+export const startPayfast=(payload,t)=>req("/api/student/finance/payfast/start",{method:"POST",body:JSON.stringify(payload||{})},t);

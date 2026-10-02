@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.backend_finalization import (
     RolePermissionsUpdate,
@@ -10,6 +10,8 @@ from app.services.admin_system_management_service import (
     create_staff_account,
     list_roles_permissions,
     list_staff_accounts,
+    list_staff_employee_options,
+    list_staff_permission_catalog,
     list_system_settings,
     replace_role_permissions,
     set_staff_account_status,
@@ -128,3 +130,21 @@ def admin_role_permissions_update(
         }
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.get("/employee-options")
+def admin_staff_employee_options(
+    current_staff: dict = Depends(require_staff_accounts),
+):
+    del current_staff
+    records = list_staff_employee_options()
+    return {"success": True, "count": len(records), "employees": records}
+
+
+@router.get("/permissions")
+def admin_permission_catalog(
+    current_staff: dict = Depends(require_roles_permissions),
+):
+    del current_staff
+    records = list_staff_permission_catalog()
+    return {"success": True, "count": len(records), "permissions": records}

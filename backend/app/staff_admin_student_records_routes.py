@@ -1,9 +1,13 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.models.admin_student_record_update import (
+    AdminStudentRecordUpdate,
+)
 from app.services.admin_student_records_service import (
     get_student_document_inventory,
     get_student_record,
     list_students,
+    update_student_record,
 )
 from app.staff_admin_guard import require_admin_staff
 
@@ -81,3 +85,40 @@ def admin_student_documents(
             detail=str(error),
         ) from error
 
+
+
+@router.patch("/{student_number}")
+def admin_update_student_detail(
+    student_number: str,
+    payload: AdminStudentRecordUpdate,
+    current_staff: dict = Depends(require_admin_staff),
+):
+    del current_staff
+
+    try:
+        record = update_student_record(
+            student_number=student_number,
+            changes=payload.model_dump(
+                exclude_unset=True
+            ),
+        )
+
+        return {
+            "success": True,
+            "message": (
+                "Student record updated successfully."
+            ),
+            "student": record,
+        }
+
+    except ValueError as error:
+        message = str(error)
+
+        raise HTTPException(
+            status_code=(
+                404
+                if message == "Student record not found."
+                else 400
+            ),
+            detail=message,
+        ) from error

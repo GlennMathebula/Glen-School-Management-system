@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from uuid import UUID
 
@@ -87,7 +87,7 @@ def get_student_support_ticket(ticket_id: str) -> dict:
                 SELECT *
                 FROM public.support_ticket_messages
                 WHERE ticket_id = CAST(:ticket_id AS uuid)
-                ORDER BY created_at, id
+                ORDER BY sent_at, id
                 """
             ),
             {"ticket_id": ticket_id},
@@ -206,7 +206,7 @@ def reply_student_support_ticket(
 
         if "assigned_staff_code" in ticket_cols:
             sets.append(
-                "assigned_staff_code = COALESCE(assigned_staff_code, :staff_code)"
+                "assigned_staff_code = COALESCE(assigned_staff_code, CAST(:staff_code AS varchar))"
             )
 
         if "status" in ticket_cols:
@@ -248,11 +248,11 @@ def update_student_support_status(
         if "status" not in cols:
             raise ValueError("Support ticket table has no status column.")
 
-        sets = ["status = :status"]
+        sets = ["status = CAST(:status AS varchar)"]
 
         if "assigned_staff_code" in cols:
             sets.append(
-                "assigned_staff_code = COALESCE(assigned_staff_code, :staff_code)"
+                "assigned_staff_code = COALESCE(assigned_staff_code, CAST(:staff_code AS varchar))"
             )
 
         if "updated_at" in cols:
@@ -262,7 +262,7 @@ def update_student_support_status(
             sets.append(
                 """
                 closed_at = CASE
-                    WHEN :status IN ('Closed', 'Resolved')
+                    WHEN CAST(:status AS varchar) IN ('Closed', 'Resolved')
                     THEN COALESCE(closed_at, NOW())
                     ELSE NULL
                 END

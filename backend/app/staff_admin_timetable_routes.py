@@ -1,9 +1,18 @@
-﻿from datetime import date
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.models.admin_timetable_management import (
+    AdminTimetableSessionCreate,
+    AdminTimetableSessionUpdate,
+)
+
 from app.services.admin_timetable_service import (
+    create_timetable_session,
+    delete_timetable_session,
+    get_timetable_options,
     list_admin_timetable,
+    update_timetable_session,
     update_timetable_session_status,
 )
 from app.staff_admin_guard import require_admin_staff
@@ -70,3 +79,65 @@ def admin_timetable_status(
             detail=str(error),
         ) from error
 
+
+
+@router.get("/options")
+def admin_timetable_options(
+    current_staff: dict = Depends(require_admin_staff),
+):
+    del current_staff
+    return {"success": True, **get_timetable_options()}
+
+
+@router.post("/sessions")
+def admin_timetable_session_create(
+    payload: AdminTimetableSessionCreate,
+    current_staff: dict = Depends(require_admin_staff),
+):
+    try:
+        return {
+            "success": True,
+            "message": "Timetable session created.",
+            "session": create_timetable_session(
+                actor_staff_code=current_staff["staff_code"],
+                **payload.model_dump(),
+            ),
+        }
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.put("/sessions/{timetable_session_id}")
+def admin_timetable_session_update(
+    timetable_session_id: str,
+    payload: AdminTimetableSessionUpdate,
+    current_staff: dict = Depends(require_admin_staff),
+):
+    del current_staff
+    try:
+        return {
+            "success": True,
+            "message": "Timetable session updated.",
+            "session": update_timetable_session(
+                timetable_session_id=timetable_session_id,
+                changes=payload.model_dump(exclude_unset=True),
+            ),
+        }
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@router.delete("/sessions/{timetable_session_id}")
+def admin_timetable_session_delete(
+    timetable_session_id: str,
+    current_staff: dict = Depends(require_admin_staff),
+):
+    del current_staff
+    try:
+        return {
+            "success": True,
+            "message": "Draft timetable session deleted.",
+            "session": delete_timetable_session(timetable_session_id),
+        }
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error

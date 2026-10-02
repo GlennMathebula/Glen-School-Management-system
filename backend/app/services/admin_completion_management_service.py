@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import text
 
@@ -295,3 +295,126 @@ def update_graduation(
         print(f"WARNING: graduation audit log failed: {error}")
 
     return record
+
+
+# ============================================================
+# V3.8 SYSTEM-CALCULATED COMPLETION STATUS
+# ============================================================
+
+from app.services.admin_completion_service import (
+    get_completion_record as _v38_get_completion_record,
+)
+
+
+_V38_STATE_LABELS = {
+    "PROGRAMME_COMPLETE": "Programme Complete",
+    "FISA_OUTSTANDING": "FISA Outstanding",
+    "EISA_ADMISSION_READY": "EISA Admission Ready",
+    "EISA_NOT_YET_ELIGIBLE": "EISA Not Yet Eligible",
+    "ASSESSMENT_PATHWAY_REVIEW": "Assessment Pathway Review",
+}
+
+
+def get_completion_tracking(
+    student_number: str,
+) -> dict:
+    student_number = str(
+        student_number or ""
+    ).strip()
+
+    with engine.connect() as connection:
+        tracking_row = _get_record(
+            connection,
+            student_number,
+        )
+
+    tracking = (
+        dict(tracking_row)
+        if tracking_row
+        else {
+            "student_number": student_number,
+            "graduation_status": "Pending",
+            "certificate_status": "Pending",
+        }
+    )
+
+    academic = _v38_get_completion_record(
+        student_number
+    )
+
+    if not academic:
+        return {
+            **tracking,
+            "completion_status": "Pending",
+            "completion_state": "NO_REGISTRATION",
+            "completion_state_label": "No Registration",
+            "final_completion_confirmed": False,
+        }
+
+    completion_state = academic.get(
+        "completion_state"
+    )
+
+    final_confirmed = bool(
+        academic.get(
+            "final_completion_confirmed"
+        )
+    )
+
+    if final_confirmed:
+        completion_status = "Completed"
+        completion_date = academic.get(
+            "fisa_date"
+        )
+    else:
+        completion_status = "Pending"
+        completion_date = None
+
+    return {
+        **tracking,
+        "student_number": student_number,
+        "completion_status": completion_status,
+        "completion_date": completion_date,
+        "completion_state": completion_state,
+        "completion_state_label": _V38_STATE_LABELS.get(
+            completion_state,
+            completion_state or "Pending",
+        ),
+        "final_completion_confirmed": final_confirmed,
+        "assessment_type": academic.get(
+            "assessment_type"
+        ),
+        "course_code": academic.get(
+            "course_code"
+        ),
+        "course_name": academic.get(
+            "course_name"
+        ),
+        "registration_status": academic.get(
+            "registration_status"
+        ),
+        "fisa_mark": academic.get(
+            "fisa_mark"
+        ),
+        "fisa_result": academic.get(
+            "fisa_result"
+        ),
+        "fisa_status": academic.get(
+            "fisa_status"
+        ),
+        "fisa_pass_mark": (
+            academic.get("fisa_pass_mark")
+            if academic.get("fisa_pass_mark") is not None
+            else None
+        ),
+        "fisa_competent": academic.get(
+            "fisa_competent"
+        ),
+        "eisa_eligible": academic.get(
+            "eisa_eligible"
+        ),
+        "academic_note": academic.get(
+            "note"
+        ),
+        "completion_source": "Assessment Results",
+    }

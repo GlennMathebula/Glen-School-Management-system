@@ -632,7 +632,7 @@ def update_placement(
                     placement_start_date = :placement_start_date,
                     placement_end_date = :placement_end_date,
                     hours_required = :hours_required,
-                    status = :status,
+                    status = CAST(:status AS varchar),
                     notes = :notes,
                     updated_at = now()
                 WHERE id = CAST(:id AS uuid)
@@ -1223,8 +1223,11 @@ def create_eisa_sitting(
     if (
         str(course.get("assessment_type") or "")
         .strip()
-        .lower()
-        != "fisa + eisa"
+        .upper()
+        not in {
+            "FISA_PLUS_EISA",
+            "FISA + EISA",
+        }
     ):
         raise ValueError(
             "EISA sittings can only be created for "
@@ -1280,7 +1283,7 @@ def create_eisa_sitting(
                     :status,
                     :actor,
                     CASE
-                        WHEN :status = 'Published'
+                        WHEN CAST(:status AS varchar) = 'Published'
                         THEN now()
                         ELSE NULL
                     END
@@ -1379,15 +1382,15 @@ def update_eisa_sitting(
                     assessment_centre = :assessment_centre,
                     capacity = :capacity,
                     instructions = :instructions,
-                    status = :status,
+                    status = CAST(:status AS varchar),
                     published_at = CASE
-                        WHEN :status = 'Published'
+                        WHEN CAST(:status AS varchar) = 'Published'
                              AND published_at IS NULL
                         THEN now()
                         ELSE published_at
                     END,
                     completed_at = CASE
-                        WHEN :status = 'Completed'
+                        WHEN CAST(:status AS varchar) = 'Completed'
                         THEN now()
                         ELSE completed_at
                     END,
@@ -1869,7 +1872,7 @@ def update_corrective_action(
                         due_date
                     ),
                     status = COALESCE(
-                        :status,
+                        CAST(:status AS varchar),
                         status
                     ),
                     completion_notes = COALESCE(
@@ -1881,17 +1884,17 @@ def update_corrective_action(
                         evidence_reference
                     ),
                     completed_at = CASE
-                        WHEN :status = 'Completed'
+                        WHEN CAST(:status AS varchar) = 'Completed'
                         THEN now()
                         ELSE completed_at
                     END,
                     closed_by = CASE
-                        WHEN :status = 'Closed'
+                        WHEN CAST(:status AS varchar) = 'Closed'
                         THEN :actor
                         ELSE closed_by
                     END,
                     closed_at = CASE
-                        WHEN :status = 'Closed'
+                        WHEN CAST(:status AS varchar) = 'Closed'
                         THEN now()
                         ELSE closed_at
                     END,
@@ -1940,3 +1943,101 @@ def update_corrective_action(
     )
 
     return result
+
+
+# ============================================================
+# V5.0 COMPLIANCE READ PARAMETER TYPE FIX
+# ============================================================
+
+from sqlalchemy import (
+    Date as _V50Date,
+    Integer as _V50Integer,
+    Numeric as _V50Numeric,
+    String as _V50String,
+    bindparam as _v50_bindparam,
+    text as _v50_text,
+)
+
+
+def _v50_statement(
+    sql: str,
+    params: dict,
+):
+    statement = _v50_text(
+        sql
+    )
+
+    bind_types = {
+        "cycle_code": _V50String(),
+        "course_code": _V50String(),
+        "class_code": _V50String(),
+        "status": _V50String(),
+        "assessment_scope": _V50String(),
+        "source_type": _V50String(),
+        "admission_status": _V50String(),
+        "attendance_status": _V50String(),
+        "date_from": _V50Date(),
+        "date_to": _V50Date(),
+        "seat_number": _V50Integer(),
+        "hours_required": _V50Numeric(),
+    }
+
+    binds = []
+
+    for name, type_ in bind_types.items():
+        if (
+            f":{name}" in sql
+            and name in params
+        ):
+            binds.append(
+                _v50_bindparam(
+                    name,
+                    type_=type_,
+                )
+            )
+
+    if binds:
+        statement = statement.bindparams(
+            *binds
+        )
+
+    return statement
+
+
+def _fetch_one(
+    sql: str,
+    params: dict,
+) -> dict | None:
+    statement = _v50_statement(
+        sql,
+        params,
+    )
+
+    with engine.connect() as connection:
+        row = connection.execute(
+            statement,
+            params,
+        ).mappings().first()
+
+    return dict(row) if row else None
+
+
+def _fetch_all(
+    sql: str,
+    params: dict,
+) -> list[dict]:
+    statement = _v50_statement(
+        sql,
+        params,
+    )
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            statement,
+            params,
+        ).mappings().all()
+
+    return [
+        dict(row)
+        for row in rows
+    ]

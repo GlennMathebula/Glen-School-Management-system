@@ -1454,10 +1454,18 @@ def generate_proof_of_registration(
         )
     )
 
-    assessment_type = safe_value(
-        registration.get(
-            "assessment_type"
-        )
+    assessment_type_raw = registration.get(
+        "assessment_type"
+    )
+    assessment_type = {
+        "FISA_ONLY": "FISA",
+        "FISA": "FISA",
+        "FISA_PLUS_EISA": "FISA + EISA",
+        "FISA+EISA": "FISA + EISA",
+        "FISA + EISA": "FISA + EISA",
+    }.get(
+        str(assessment_type_raw).strip(),
+        safe_value(assessment_type_raw),
     )
 
     sdp_code = safe_value(

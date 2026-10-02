@@ -88,3 +88,139 @@ def active_class_lateral() -> str:
             LIMIT 1
         ) cl ON TRUE
     """
+
+
+# ============================================================
+# V3.6 REPORT FILTER TYPE FIX
+# ============================================================
+
+from sqlalchemy import (
+    Date as _V36SADate,
+    String as _V36SAString,
+    bindparam as _v36_bindparam,
+)
+from sqlalchemy.exc import (
+    OperationalError as _V36ReportOperationalError,
+)
+
+
+def fetch_rows(
+    sql: str,
+    params: dict,
+) -> list[dict]:
+    statement = text(sql)
+
+    bind_types = {
+        "cycle_code": _V36SAString(),
+        "course_code": _V36SAString(),
+        "class_code": _V36SAString(),
+        "date_from": _V36SADate(),
+        "date_to": _V36SADate(),
+    }
+
+    typed_binds = []
+
+    for name, type_ in bind_types.items():
+        if f":{name}" in sql:
+            typed_binds.append(
+                _v36_bindparam(
+                    name,
+                    type_=type_,
+                )
+            )
+
+    if typed_binds:
+        statement = statement.bindparams(
+            *typed_binds
+        )
+
+    def _load():
+        with engine.connect() as connection:
+            rows = connection.execute(
+                statement,
+                params,
+            ).mappings().all()
+
+        return [
+            dict(row)
+            for row in rows
+        ]
+
+    try:
+        return _load()
+    except _V36ReportOperationalError:
+        engine.dispose()
+        return _load()
+
+
+# ============================================================
+# V4.6 REPORT PARAMETER TYPE FIX
+# Includes module_type used by curriculum reports.
+# ============================================================
+
+from sqlalchemy import (
+    Date as _V46SADate,
+    String as _V46SAString,
+    bindparam as _v46_bindparam,
+    text as _v46_text,
+)
+from sqlalchemy.exc import (
+    OperationalError as _V46OperationalError,
+)
+
+
+def fetch_rows(
+    sql: str,
+    params: dict,
+) -> list[dict]:
+    statement = _v46_text(
+        sql
+    )
+
+    bind_types = {
+        "cycle_code": _V46SAString(),
+        "course_code": _V46SAString(),
+        "class_code": _V46SAString(),
+        "module_type": _V46SAString(),
+        "date_from": _V46SADate(),
+        "date_to": _V46SADate(),
+    }
+
+    typed_binds = []
+
+    for name, type_ in bind_types.items():
+        if (
+            f":{name}" in sql
+            and name in params
+        ):
+            typed_binds.append(
+                _v46_bindparam(
+                    name,
+                    type_=type_,
+                )
+            )
+
+    if typed_binds:
+        statement = statement.bindparams(
+            *typed_binds
+        )
+
+    def _load():
+        with engine.connect() as connection:
+            rows = connection.execute(
+                statement,
+                params,
+            ).mappings().all()
+
+        return [
+            dict(
+                row
+            )
+            for row in rows
+        ]
+
+    try:
+        return _load()
+    except _V46OperationalError:
+        engine.dispose()
+        return _load()

@@ -1201,9 +1201,270 @@ def build_registrar_confirmation(
 # GENERATE ENROLMENT FORM
 # ============================================================
 
+
+# ============================================================
+# GM_ENROLMENT_DISPLAY_HELPERS_V1
+# Stored database/QCTO codes remain unchanged. These helpers
+# translate only learner-facing document values.
+# ============================================================
+
+GM_ENROLMENT_DISPLAY_MAPS = {
+    "gender_code": {"M": "Male", "F": "Female"},
+    "equity_code": {
+        "BA": "African",
+        "BC": "Coloured",
+        "BI": "Indian",
+        "Oth": "Other",
+        "U": "Unknown",
+        "Wh": "White",
+        "WH": "White",
+    },
+    "nationality_code": {
+        "SA": "South Africa",
+        "SDC": "SADC except South Africa",
+        "ANG": "Angola",
+        "BOT": "Botswana",
+        "LES": "Lesotho",
+        "MAL": "Malawi",
+        "MAU": "Mauritius",
+        "MOZ": "Mozambique",
+        "NAM": "Namibia",
+        "SEY": "Seychelles",
+        "SWA": "Eswatini",
+        "TAN": "Tanzania",
+        "ZAI": "Zaire",
+        "ZAM": "Zambia",
+        "ZIM": "Zimbabwe",
+        "AIS": "Asian countries",
+        "AUS": "Australia and Oceania countries",
+        "EUR": "European countries",
+        "NOR": "North American countries",
+        "SOU": "South and Central American countries",
+        "ROA": "Rest of Africa",
+        "OOC": "Other and rest of Oceania",
+        "NOT": "Not applicable / Institution",
+        "U": "Unspecified",
+    },
+    "home_language": {
+        "Afr": "Afrikaans",
+        "Eng": "English",
+        "Nde": "isiNdebele",
+        "Oth": "Other",
+        "SASL": "South African Sign Language",
+        "Sep": "Sepedi",
+        "Ses": "Sesotho",
+        "Set": "Setswana",
+        "Swa": "Siswati",
+        "Tsh": "Tshivenda",
+        "U": "Unknown",
+        "Xho": "isiXhosa",
+        "Xit": "Xitsonga",
+        "Zul": "isiZulu",
+    },
+    "citizen_status": {
+        "SA": "South African",
+        "O": "Other",
+        "D": "Dual (South Africa plus other)",
+        "PR": "Permanent Resident",
+        "U": "Unknown",
+    },
+    "socioeconomic_code": {
+        "01": "Employed",
+        "02": "Unemployed, seeking work",
+        "03": "Not working, not looking for work",
+        "04": "Home-maker (not working)",
+        "06": "Scholar / Student (not working)",
+        "07": "Pensioner / Retired (not working)",
+        "08": "Not working - disabled",
+        "09": "Not working - no wish to work",
+        "10": "Not working - none of the above",
+        "97": "N/A - aged under 15",
+        "98": "N/A - Institution",
+        "U": "Unspecified",
+    },
+    "disability_status": {
+        "N": "None",
+        "01": "Sight difficulty (even with glasses)",
+        "02": "Hearing difficulty (even with hearing aid)",
+        "03": "Communication difficulty (talking / listening)",
+        "04": "Physical difficulty (moving / standing / grasping)",
+        "05": "Intellectual difficulty (learning)",
+        "06": "Emotional / behavioural / psychological difficulty",
+        "07": "Multiple disabilities",
+        "09": "Disabled but unspecified",
+        "U": "Unknown disability status",
+    },
+    "disability_rating": {
+        "01": "No difficulty",
+        "02": "Some difficulty",
+        "03": "A lot of difficulty",
+        "04": "Cannot do at all",
+        "06": "Cannot yet be determined",
+        "60": "May be part of multiple difficulties",
+        "70": "May have difficulty",
+        "80": "Former difficulty - none now",
+    },
+    "immigrant_status": {
+        "01": "Immigrant",
+        "02": "Refugee",
+        "03": "SA Citizen",
+    },
+    "province_code": {
+        "1": "Western Cape",
+        "2": "Eastern Cape",
+        "3": "Northern Cape",
+        "4": "Free State",
+        "5": "KwaZulu-Natal",
+        "6": "North West",
+        "7": "Gauteng",
+        "8": "Mpumalanga",
+        "9": "Limpopo",
+        "N": "South Africa National",
+        "X": "Outside South Africa",
+    },
+}
+
+GM_ASSESSMENT_TYPE_LABELS = {
+    "FISA_ONLY": "FISA",
+    "FISA": "FISA",
+    "FISA_PLUS_EISA": "FISA + EISA",
+    "FISA+EISA": "FISA + EISA",
+    "FISA + EISA": "FISA + EISA",
+}
+
+
+def _gm_display_code(field_name, value):
+    if value is None:
+        return value
+    text_value = str(value).strip()
+    if not text_value:
+        return value
+    mapping = GM_ENROLMENT_DISPLAY_MAPS.get(field_name, {})
+    return mapping.get(text_value, mapping.get(text_value.upper(), value))
+
+
+def _gm_display_assessment_type(value):
+    if value is None:
+        return value
+    text_value = str(value).strip()
+    if not text_value:
+        return value
+    return GM_ASSESSMENT_TYPE_LABELS.get(
+        text_value,
+        GM_ASSESSMENT_TYPE_LABELS.get(text_value.upper(), value),
+    )
+
+
+def _gm_format_academic_subjects(value):
+    if value is None:
+        return value
+
+    import json
+
+    parsed = value
+
+    if isinstance(parsed, str):
+        candidate = parsed.strip()
+        if not candidate:
+            return parsed
+
+        for _ in range(2):
+            try:
+                parsed = json.loads(candidate)
+            except Exception:
+                break
+
+            if isinstance(parsed, str):
+                candidate = parsed.strip()
+                continue
+            break
+
+    if isinstance(parsed, dict):
+        parsed = [parsed]
+
+    if not isinstance(parsed, list):
+        return value
+
+    readable = []
+
+    for item in parsed:
+        if not isinstance(item, dict):
+            item_text = str(item).strip()
+            if item_text:
+                readable.append(item_text)
+            continue
+
+        category = (
+            item.get("category")
+            or item.get("subject_category")
+            or item.get("type")
+            or ""
+        )
+        subject = (
+            item.get("subject")
+            or item.get("subject_name")
+            or item.get("name")
+            or ""
+        )
+        achievement = (
+            item.get("achievement_level")
+            or item.get("achievement")
+            or item.get("result")
+            or item.get("level")
+            or ""
+        )
+
+        category = str(category).strip()
+        subject = str(subject).strip()
+        achievement = str(achievement).strip()
+
+        if subject and category:
+            line = f"{category}: {subject}"
+        else:
+            line = subject or category
+
+        if achievement:
+            line = f"{line} - {achievement}" if line else achievement
+
+        if line:
+            readable.append(line)
+
+    if not readable:
+        return "N/A"
+
+    return "  |  ".join(readable)
+
+
+def _gm_prepare_enrolment_display_data(data):
+    result = dict(data or {})
+
+    for field_name in GM_ENROLMENT_DISPLAY_MAPS:
+        if field_name in result:
+            result[field_name] = _gm_display_code(
+                field_name,
+                result.get(field_name),
+            )
+
+    if "assessment_type" in result:
+        result["assessment_type"] = _gm_display_assessment_type(
+            result.get("assessment_type")
+        )
+
+    if "academic_subjects" in result:
+        result["academic_subjects"] = _gm_format_academic_subjects(
+            result.get("academic_subjects")
+        )
+
+    if isinstance(result.get("rpl_admission"), bool):
+        result["rpl_admission"] = "Yes" if result["rpl_admission"] else "No"
+
+    return result
+
+
 def generate_enrolment_form(
     data: dict,
 ) -> str:
+    data = _gm_prepare_enrolment_display_data(data)
 
     styles = get_styles()
 
@@ -1359,19 +1620,19 @@ def generate_enrolment_form(
                 ),
             ),
             (
-                "Gender Code",
+                "Gender",
                 data.get(
                     "gender_code"
                 ),
             ),
             (
-                "Equity Code",
+                "Equity",
                 data.get(
                     "equity_code"
                 ),
             ),
             (
-                "Nationality Code",
+                "Nationality",
                 data.get(
                     "nationality_code"
                 ),
@@ -1389,7 +1650,7 @@ def generate_enrolment_form(
                 ),
             ),
             (
-                "Socioeconomic Code",
+                "Socioeconomic Status",
                 data.get(
                     "socioeconomic_code"
                 ),
@@ -1465,7 +1726,7 @@ def generate_enrolment_form(
                 ),
             ),
             (
-                "Province Code",
+                "Province",
                 data.get(
                     "province_code"
                 ),

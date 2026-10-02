@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from sqlalchemy import text
 
@@ -216,3 +216,46 @@ def set_eisa_eligibility(
 
     return dict(row)
 
+
+
+# ============================================================
+# V3.8 DEFAULT PASS MARK FALLBACK
+# ============================================================
+
+from app.services.assessment_settings_service import (
+    get_default_assessment_pass_mark as _v38_default_pass_mark,
+)
+
+
+def _fisa_competent(
+    row: dict,
+) -> bool:
+    if row.get("fisa_status") != "Published":
+        return False
+
+    result = str(
+        row.get("fisa_result") or ""
+    ).strip().upper()
+
+    if result in {
+        "C",
+        "COMPETENT",
+        "PASSED",
+        "PASS",
+    }:
+        return True
+
+    mark = row.get("fisa_mark")
+
+    if mark is None:
+        return False
+
+    pass_mark = row.get("fisa_pass_mark")
+
+    if pass_mark is None:
+        pass_mark = _v38_default_pass_mark()
+
+    try:
+        return float(mark) >= float(pass_mark)
+    except (TypeError, ValueError):
+        return False

@@ -489,3 +489,68 @@ app.include_router(
 
 from app.student_finance_portal_routes import router as student_finance_portal_router
 app.include_router(student_finance_portal_router)
+
+
+from app.staff_admin_document_center_routes import (
+    router as staff_admin_document_center_router,
+)
+
+app.include_router(
+    staff_admin_document_center_router
+)
+
+
+from app.staff_admin_attendance_register_routes import (
+    router as staff_admin_attendance_register_router,
+)
+
+app.include_router(
+    staff_admin_attendance_register_router
+)
+
+
+from app.staff_admin_attendance_review_routes import (
+    router as staff_admin_attendance_review_router,
+)
+
+app.include_router(
+    staff_admin_attendance_review_router
+)
+
+
+
+from app.staff_admission_document_preview_routes import (
+    router as staff_admission_document_preview_router,
+)
+
+app.include_router(
+    staff_admission_document_preview_router
+)
+
+
+
+from app.staff_admissions_bulk_routes import (
+    router as staff_admissions_bulk_router,
+)
+
+app.include_router(
+    staff_admissions_bulk_router
+)
+
+
+from app.staff_admin_bulk_documents_routes import (
+    router as staff_admin_bulk_documents_router,
+)
+
+app.include_router(
+    staff_admin_bulk_documents_router
+)
+
+
+from app.staff_desktop_v5_routes import (
+    router as staff_desktop_v5_router,
+)
+
+app.include_router(
+    staff_desktop_v5_router
+)
