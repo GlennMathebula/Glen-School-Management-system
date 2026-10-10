@@ -10,7 +10,7 @@ import {
 const PUBLIC_LINKS = {
   applications: "/applications",
   careers: "/careers",
-  studentPortal: "https://lms.glenmoniques.co.za",
+  studentPortal: "/lms",
 };
 
 const schools = [

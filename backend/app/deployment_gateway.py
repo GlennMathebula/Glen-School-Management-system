@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from urllib.parse import unquote
 
-from starlette.responses import FileResponse, PlainTextResponse, RedirectResponse
+from starlette.responses import FileResponse, PlainTextResponse
 from starlette.types import Receive, Scope, Send
 
 from app.main import app as api_app
@@ -20,17 +20,17 @@ STUDENT_DIST = PROJECT_ROOT / "frontends" / "student-web" / "dist"
 
 APPLICATIONS_PUBLIC_URL = os.getenv(
     "APPLICATIONS_PUBLIC_URL",
-    "https://applications.glenmoniques.co.za",
+    "https://www.glenmoniques.co.za/applications",
 ).rstrip("/")
 
 CAREERS_PUBLIC_URL = os.getenv(
     "CAREERS_PUBLIC_URL",
-    "https://careers.glenmoniques.co.za",
+    "https://www.glenmoniques.co.za/careers",
 ).rstrip("/")
 
 STUDENT_PUBLIC_URL = os.getenv(
     "STUDENT_PUBLIC_URL",
-    "https://lms.glenmoniques.co.za",
+    "https://www.glenmoniques.co.za/lms",
 ).rstrip("/")
 
 
@@ -47,6 +47,22 @@ def _path(scope: Scope) -> str:
 
 def _host_matches(host: str, names: tuple[str, ...]) -> bool:
     return host in names or any(host.startswith(prefix) for prefix in names)
+
+
+def _scope_without_prefix(scope: Scope, prefix: str) -> Scope:
+    request_path = _path(scope)
+    stripped = request_path[len(prefix) :] if request_path.startswith(prefix) else request_path
+
+    if not stripped:
+        stripped = "/"
+
+    if not stripped.startswith("/"):
+        stripped = "/" + stripped
+
+    routed_scope = dict(scope)
+    routed_scope["path"] = stripped
+    routed_scope["raw_path"] = stripped.encode("utf-8")
+    return routed_scope
 
 
 def _safe_file(root: Path, request_path: str) -> Path | None:
@@ -126,15 +142,17 @@ class GlenMoniquesDeploymentGateway:
     """
     One Railway application service for the full deployable Glen Moniques SMS.
 
-    Public routing:
-      www.glenmoniques.co.za          -> website-web
-      applications.glenmoniques.co.za -> applications-web
-      careers.glenmoniques.co.za      -> careers-web
-      lms.glenmoniques.co.za          -> student-web
-      api.glenmoniques.co.za          -> FastAPI
+    Current-plan public routing through one custom domain:
+      www.glenmoniques.co.za/              -> website-web
+      www.glenmoniques.co.za/applications  -> applications-web
+      www.glenmoniques.co.za/careers       -> careers-web
+      www.glenmoniques.co.za/lms           -> student-web
+      www.glenmoniques.co.za/api/*         -> FastAPI
 
-    /api and /health are also routed to FastAPI on every host. This keeps
-    frontend API calls same-origin and avoids requiring permissive CORS.
+    /api and /health are routed to FastAPI before frontend routing. This keeps
+    all browser applications same-origin and avoids requiring permissive CORS.
+
+    Dedicated subdomain host routing is retained for a future plan upgrade.
     """
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
@@ -176,57 +194,22 @@ class GlenMoniquesDeploymentGateway:
             await student_app(scope, receive, send)
             return
 
-        # Keep the existing public website links working without forcing
-        # BrowserRouter basename changes in the dedicated React applications.
-        if path == "/applications":
-            response = RedirectResponse(
-                APPLICATIONS_PUBLIC_URL + "/",
-                status_code=307,
-            )
-            await response(scope, receive, send)
+        # Current Railway plan exposes one custom domain on this service.
+        # Serve each web application under a stable path prefix. The frontend
+        # bundles use matching Vite base paths and BrowserRouter basenames.
+        if path == "/applications" or path.startswith("/applications/"):
+            routed_scope = _scope_without_prefix(scope, "/applications")
+            await applications_app(routed_scope, receive, send)
             return
 
-        if path.startswith("/applications/"):
-            suffix = path[len("/applications") :]
-            response = RedirectResponse(
-                APPLICATIONS_PUBLIC_URL + suffix,
-                status_code=307,
-            )
-            await response(scope, receive, send)
+        if path == "/careers" or path.startswith("/careers/"):
+            routed_scope = _scope_without_prefix(scope, "/careers")
+            await careers_app(routed_scope, receive, send)
             return
 
-        if path == "/careers":
-            response = RedirectResponse(
-                CAREERS_PUBLIC_URL + "/",
-                status_code=307,
-            )
-            await response(scope, receive, send)
-            return
-
-        if path.startswith("/careers/"):
-            suffix = path[len("/careers") :]
-            response = RedirectResponse(
-                CAREERS_PUBLIC_URL + suffix,
-                status_code=307,
-            )
-            await response(scope, receive, send)
-            return
-
-        if path == "/lms":
-            response = RedirectResponse(
-                STUDENT_PUBLIC_URL + "/",
-                status_code=307,
-            )
-            await response(scope, receive, send)
-            return
-
-        if path.startswith("/lms/"):
-            suffix = path[len("/lms") :]
-            response = RedirectResponse(
-                STUDENT_PUBLIC_URL + suffix,
-                status_code=307,
-            )
-            await response(scope, receive, send)
+        if path == "/lms" or path.startswith("/lms/"):
+            routed_scope = _scope_without_prefix(scope, "/lms")
+            await student_app(routed_scope, receive, send)
             return
 
         await website_app(scope, receive, send)

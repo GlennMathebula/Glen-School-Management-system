@@ -17,21 +17,25 @@ The Electron staff desktop and Expo student mobile application are not Railway
 web services. They remain separately packaged/distributed clients that connect
 to the same production API.
 
-## Production hosts
+## Production routing
 
-All of these domains can point to the same Railway application service:
+The current Railway plan allows one custom domain on the combined application
+service. The full deployable SMS therefore uses one production hostname with
+path-based routing:
 
-- `www.glenmoniques.co.za` -> public website
-- `applications.glenmoniques.co.za` -> learner applications
-- `careers.glenmoniques.co.za` -> careers
-- `lms.glenmoniques.co.za` -> student web/LMS
-- `api.glenmoniques.co.za` -> FastAPI
+- `https://www.glenmoniques.co.za/` -> public website
+- `https://www.glenmoniques.co.za/applications` -> learner applications / registration
+- `https://www.glenmoniques.co.za/careers` -> careers portal
+- `https://www.glenmoniques.co.za/lms` -> student web / LMS
+- `https://www.glenmoniques.co.za/api/*` -> FastAPI
+- `https://www.glenmoniques.co.za/health` -> application health
 
-`/api/*` and `/health*` are routed to FastAPI on every host so that the web
-frontends can use same-origin API calls without permissive CORS.
+`/api/*` and `/health*` are routed to FastAPI before frontend routing, so the web
+frontends use same-origin API calls without permissive CORS.
 
-The public website keeps `/applications` and `/careers` as convenient links;
-the deployment gateway redirects them to the dedicated hostnames.
+The deployment gateway still understands the dedicated subdomain hostnames for
+a future Railway plan upgrade, but they are not required for the current
+production deployment.
 
 ## Railway service
 
