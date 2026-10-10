@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+from app.critical_write_guard import redis_guarded_endpoint
+from pathlib import Path
 
 from fastapi import (
     APIRouter,
@@ -269,6 +270,7 @@ def finance_student_payments(
 @router.post(
     "/students/{student_number}/payments"
 )
+@redis_guarded_endpoint("finance:student", key_fields=("student_number",), ttl_seconds=120, busy_message="A finance update for this learner is already being processed.", unavailable_message="Finance write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def finance_payment_create(
     student_number: str,
     payload: FinancePaymentCreate,
@@ -316,6 +318,7 @@ def finance_payment_create(
 @router.post(
     "/payments/{payment_id}/reverse"
 )
+@redis_guarded_endpoint("finance:payment", key_fields=("payment_id",), ttl_seconds=120, busy_message="This payment is already being processed.", unavailable_message="Finance write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def finance_payment_reverse(
     payment_id: str,
     payload: FinancePaymentReverse,
@@ -462,6 +465,7 @@ def finance_student_payment_plan(
 @router.post(
     "/students/{student_number}/payment-plan"
 )
+@redis_guarded_endpoint("finance:student", key_fields=("student_number",), ttl_seconds=120, busy_message="A finance update for this learner is already being processed.", unavailable_message="Finance write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def finance_payment_plan_create(
     student_number: str,
     payload: FinancePaymentPlanCreate,
@@ -646,6 +650,7 @@ def finance_student_statements(
 @router.post(
     "/students/{student_number}/statements"
 )
+@redis_guarded_endpoint("finance:student", key_fields=("student_number",), ttl_seconds=300, busy_message="A finance operation for this learner is already being processed.", unavailable_message="Finance statement protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def finance_statement_create(
     student_number: str,
     current_staff: dict = Depends(
@@ -827,6 +832,7 @@ def finance_payment_plan_document(
 @router.get(
     "/documents/statement/{student_number}"
 )
+@redis_guarded_endpoint("finance:student", key_fields=("student_number",), ttl_seconds=300, busy_message="A finance operation for this learner is already being processed.", unavailable_message="Finance statement protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def finance_statement_document(
     student_number: str,
     current_staff: dict = Depends(

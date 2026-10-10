@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from fastapi import (
     APIRouter,
     Depends,
@@ -496,6 +497,7 @@ def my_documents(
 @router.post(
     "/documents/upload",
 )
+@redis_guarded_endpoint("student-document:upload", key_fields=("request_id",), ttl_seconds=120, busy_message="This document upload is already being processed.", unavailable_message="Document upload protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 async def upload_requested_document(
     request_id: str = Form(...),
 

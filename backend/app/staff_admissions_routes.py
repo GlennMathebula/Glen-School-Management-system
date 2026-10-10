@@ -7,6 +7,10 @@ from fastapi import (
     Query,
 )
 
+from app.redis_client import (
+    RedisLockBusyError,
+    RedisLockUnavailableError,
+)
 from app.models.admin_admissions import (
     AcceptApplicationRequest,
     DocumentReviewRequest,
@@ -21,6 +25,7 @@ from app.services.staff_admissions_service import (
     list_applications,
     registration_detail,
     reject_application,
+    register_accepted_application,
     request_outstanding_documents,
     retry_registration,
     review_document,
@@ -254,9 +259,6 @@ def admin_accept_application(
     current_staff: dict = Depends(
         require_manage_applications
     ),
-    registration_staff: dict = Depends(
-        require_manage_registrations
-    ),
 ):
     try:
         result = accept_application(
@@ -284,11 +286,25 @@ def admin_accept_application(
         return {
             "success": True,
             "message": (
-                "Application accepted and "
-                "registration processed."
+                "Application accepted. "
+                "Registration has not been created."
             ),
             "data": result,
         }
+    except RedisLockBusyError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+    except RedisLockUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Application acceptance protection "
+                "is temporarily unavailable. "
+                "Please try again shortly."
+            ),
+        ) from error
     except ValueError as error:
         _bad_request(error)
     except RuntimeError as error:
@@ -337,6 +353,64 @@ def admin_reject_application(
 
 
 @router.post(
+    "/applications/{student_number}/register"
+)
+def admin_register_application(
+    student_number: str,
+    payload: RegistrationRetryRequest,
+    current_staff: dict = Depends(
+        require_manage_registrations
+    ),
+):
+    try:
+        return {
+            "success": True,
+            "message": (
+                "Learner registration processed."
+            ),
+            "data": register_accepted_application(
+                student_number,
+                funding_type=(
+                    payload.funding_type
+                ),
+                cycle_code=(
+                    payload.cycle_code
+                ),
+                program_start_date=(
+                    payload.program_start_date
+                ),
+                expected_completion_date=(
+                    payload.expected_completion_date
+                ),
+                actor=current_staff[
+                    "staff_code"
+                ],
+            ),
+        }
+    except RedisLockBusyError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+    except RedisLockUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Registration processing protection "
+                "is temporarily unavailable. "
+                "Please try again shortly."
+            ),
+        ) from error
+    except ValueError as error:
+        _bad_request(error)
+    except Exception as error:
+        _server_error(
+            error,
+            "Learner registration failed",
+        )
+
+
+@router.post(
     "/applications/{student_number}/registration/retry"
 )
 def admin_retry_registration(
@@ -371,6 +445,20 @@ def admin_retry_registration(
                 ],
             ),
         }
+    except RedisLockBusyError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+    except RedisLockUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Registration processing protection "
+                "is temporarily unavailable. "
+                "Please try again shortly."
+            ),
+        ) from error
     except ValueError as error:
         _bad_request(error)
     except Exception as error:

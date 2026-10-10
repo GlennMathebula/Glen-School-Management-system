@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.critical_write_guard import redis_guarded_endpoint
 
 from datetime import date
 
@@ -101,16 +102,13 @@ def _student_numbers(
 
 
 @router.post("/accept")
+@redis_guarded_endpoint("job:bulk-admissions-accept", key_fields=("payload.student_numbers", "payload.cycle_code", "payload.funding_type", "payload.program_start_date", "payload.expected_completion_date"), ttl_seconds=900, busy_message="This bulk acceptance batch is already being processed.", unavailable_message="Bulk admissions protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def bulk_accept_applications(
     payload: BulkAcceptRequest,
     current_staff: dict = Depends(
         require_manage_applications
     ),
-    registration_staff: dict = Depends(
-        require_manage_registrations
-    ),
 ):
-    del registration_staff
 
     students = _student_numbers(
         payload.student_numbers
@@ -149,8 +147,7 @@ def bulk_accept_applications(
                     ),
                     "success": True,
                     "message": (
-                        "Accepted and "
-                        "registration processed."
+                        "Application accepted."
                     ),
                     "data": data,
                 }
@@ -196,6 +193,7 @@ def bulk_accept_applications(
 
 
 @router.post("/reject")
+@redis_guarded_endpoint("job:bulk-admissions-reject", key_fields=("payload.student_numbers", "payload.reason"), ttl_seconds=900, busy_message="This bulk rejection batch is already being processed.", unavailable_message="Bulk admissions protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def bulk_reject_applications(
     payload: BulkRejectRequest,
     current_staff: dict = Depends(

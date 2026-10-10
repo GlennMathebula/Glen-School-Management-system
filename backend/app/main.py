@@ -554,3 +554,14 @@ from app.staff_desktop_v5_routes import (
 app.include_router(
     staff_desktop_v5_router
 )
+
+# ============================================================
+# REDIS HEALTH
+# ============================================================
+from app.redis_health_routes import (
+    router as redis_health_router,
+)
+
+app.include_router(
+    redis_health_router
+)

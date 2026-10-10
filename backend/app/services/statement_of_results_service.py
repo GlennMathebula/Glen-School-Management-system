@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_call
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -1948,6 +1949,7 @@ def build_fisa_only_sor_data(
 
 
 
+@redis_guarded_call("job:student-sor", key_fields=("student_number",), ttl_seconds=300, busy_message="This learner Statement of Results is already being generated.", fail_open=False)
 def generate_student_statement_of_results(
 
     student_number: str,

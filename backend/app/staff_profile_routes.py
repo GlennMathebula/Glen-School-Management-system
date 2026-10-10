@@ -1,3 +1,4 @@
+from app.abuse_rate_limit import enforce_abuse_rate_limit
 from fastapi import (
     APIRouter,
     Depends,
@@ -155,6 +156,13 @@ def staff_change_password(
     ),
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: staff-password-change
+    enforce_abuse_rate_limit(
+        scope="staff-password-change",
+        identity=current_staff["staff_code"],
+        limit=5,
+        window_seconds=600,
+    )
     try:
 
         result = change_staff_password(
@@ -219,6 +227,13 @@ def staff_change_pin(
     ),
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: staff-pin-change
+    enforce_abuse_rate_limit(
+        scope="staff-pin-change",
+        identity=current_staff["staff_code"],
+        limit=5,
+        window_seconds=600,
+    )
     try:
 
         result = change_staff_pin(

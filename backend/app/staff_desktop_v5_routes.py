@@ -1,4 +1,6 @@
 from __future__ import annotations
+from app.redis_read_cache import redis_cached_endpoint
+from app.critical_write_guard import redis_guarded_endpoint
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -354,6 +356,7 @@ class CycleCourseSet(BaseModel):
 
 
 @router.get("/cycle-courses")
+@redis_cached_endpoint("academic-reference", key_fields=("cycle_code",), ttl_seconds=180)
 def cycle_courses_safe(
     cycle_code: str = Query(...),
     current_staff: dict = Depends(
@@ -1549,6 +1552,7 @@ def eisa_results(
 
 
 @router.post("/eisa-results/{student_number}")
+@redis_guarded_endpoint("assessment:eisa-capture", key_fields=("student_number", "payload.attempt_number"), ttl_seconds=120, busy_message="This learner EISA result is already being processed.", unavailable_message="EISA result write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def eisa_result_capture(
     student_number: str,
     payload: EisaResultCapture,
@@ -1672,6 +1676,7 @@ def eisa_result_capture(
 
 
 @router.post("/eisa-results/{assessment_id}/publish")
+@redis_guarded_endpoint("assessment:eisa-publish", key_fields=("assessment_id",), ttl_seconds=120, busy_message="This EISA result publication is already being processed.", unavailable_message="EISA result write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def eisa_result_publish(
     assessment_id: str,
     current_staff: dict = Depends(
@@ -1741,6 +1746,7 @@ def admin_student_card(
 
 
 @router.get("/student-cards/{student_number}/pdf")
+@redis_guarded_endpoint("job:student-card-pdf", key_fields=("student_number",), ttl_seconds=300, busy_message="This student card PDF is already being generated.", unavailable_message="Student card generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_student_card_pdf(
     student_number: str,
     current_staff: dict = Depends(

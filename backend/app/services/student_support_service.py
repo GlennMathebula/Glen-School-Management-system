@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from datetime import date
 from uuid import UUID
 
@@ -431,6 +432,7 @@ def get_student_support_ticket(
 # CREATE SUPPORT TICKET
 # ============================================================
 
+@communication_guarded_call("student-support-create", key_fields=("student_number", "category", "subject", "description", "priority"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def create_student_support_ticket(
     student_number: str,
     category: str,
@@ -578,6 +580,7 @@ def create_student_support_ticket(
 # REPLY TO SUPPORT TICKET
 # ============================================================
 
+@communication_guarded_call("student-support-reply", key_fields=("student_number", "ticket_id", "message"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_student_support_ticket(
     student_number: str,
     ticket_id: str,

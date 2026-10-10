@@ -1,3 +1,4 @@
+from app.redis_read_cache import redis_invalidate_after
 from fastapi import APIRouter,Depends,HTTPException
 from fastapi.responses import FileResponse
 from app.models.careers_hr import HRApplicationStatusUpdate,HRDocumentReview,HRHireRequest,HRInterviewCreate,HRInterviewUpdate,HROfferCreate,HROfferUpdate,HRVacancyCreate,HRVacancyUpdate
@@ -12,6 +13,7 @@ def dash(s:dict=Depends(view)):return {'success':True,'data':dashboard()}
 def vs(status:str|None=None,s:dict=Depends(view)):
     x=vacancies(status);return {'success':True,'count':len(x),'vacancies':x}
 @router.post('/vacancies')
+@redis_invalidate_after(("careers-vacancies",))
 def vc(p:HRVacancyCreate,s:dict=Depends(manage_v)):
     try:return {'success':True,'vacancy':create_vacancy(s['staff_code'],p.model_dump())}
     except ValueError as e:bad(e)
@@ -24,6 +26,7 @@ def vu(vacancy_id:str,p:HRVacancyUpdate,s:dict=Depends(manage_v)):
     try:return {'success':True,'vacancy':update_vacancy(s['staff_code'],vacancy_id,p.model_dump(exclude_unset=True))}
     except ValueError as e:bad(e)
 @router.post('/vacancies/{vacancy_id}/publish')
+@redis_invalidate_after(("careers-vacancies",))
 def vp(vacancy_id:str,s:dict=Depends(manage_v)):
     try:return {'success':True,'vacancy':set_vacancy(s['staff_code'],vacancy_id,'Published')}
     except ValueError as e:bad(e)
@@ -39,6 +42,7 @@ def ap(application_id:str,s:dict=Depends(view)):
     try:return {'success':True,'data':application(application_id)}
     except ValueError as e:bad(e,404)
 @router.patch('/applications/{application_id}/status')
+@redis_invalidate_after(("careers-vacancies",))
 def st(application_id:str,p:HRApplicationStatusUpdate,s:dict=Depends(review)):
     try:return {'success':True,'application':set_application_status(s['staff_code'],application_id,p.status,p.reason)}
     except ValueError as e:bad(e)
@@ -52,6 +56,7 @@ def dd(document_id:str,s:dict=Depends(view)):
         p,n,m=document_path(document_id);return FileResponse(str(p),filename=n,media_type=m or 'application/octet-stream')
     except ValueError as e:bad(e,404)
 @router.post('/applications/{application_id}/interviews')
+@redis_invalidate_after(("careers-vacancies",))
 def ic(application_id:str,p:HRInterviewCreate,s:dict=Depends(interviews)):
     try:return {'success':True,'interview':create_interview(s['staff_code'],application_id,p.model_dump())}
     except ValueError as e:bad(e)
@@ -64,6 +69,7 @@ def oc(application_id:str,p:HROfferCreate,s:dict=Depends(offers)):
     try:return {'success':True,'offer':create_offer(s['staff_code'],application_id,p.start_date,p.employment_type,p.offer_summary)}
     except ValueError as e:bad(e)
 @router.patch('/offers/{offer_id}')
+@redis_invalidate_after(("careers-vacancies",))
 def ou(offer_id:str,p:HROfferUpdate,s:dict=Depends(offers)):
     try:return {'success':True,'offer':update_offer(s['staff_code'],offer_id,p.status,p.response_notes)}
     except ValueError as e:bad(e)

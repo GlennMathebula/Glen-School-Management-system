@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_call
 import hashlib
 import socket
 from collections import OrderedDict
@@ -838,6 +839,7 @@ def get_payfast_transaction(
 # PROCESS VERIFIED ITN
 # ============================================================
 
+@redis_guarded_call("finance:payfast-itn", key_fields=("form_data.m_payment_id",), ttl_seconds=120, busy_message="This PayFast notification is already being processed.", fail_open=False)
 def process_verified_itn(
     form_data: OrderedDict,
     signature_verified: bool,

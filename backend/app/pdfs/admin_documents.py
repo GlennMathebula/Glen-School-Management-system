@@ -1356,83 +1356,121 @@ def _gm_display_assessment_type(value):
 
 
 def _gm_format_academic_subjects(value):
-    if value is None:
-        return value
-
     import json
+    import re
 
-    parsed = value
+    if value is None:
+        return "-"
 
-    if isinstance(parsed, str):
-        candidate = parsed.strip()
-        if not candidate:
-            return parsed
+    def clean_subject(item):
+        if item is None:
+            return ""
 
-        for _ in range(2):
+        if isinstance(item, dict):
+            for key in (
+                "subject",
+                "subject_name",
+                "name",
+                "selected_subject",
+                "value",
+            ):
+                candidate = item.get(key)
+                if candidate:
+                    return clean_subject(candidate)
+            return ""
+
+        text = str(item).strip()
+        if not text:
+            return ""
+
+        if ":" in text:
+            left, right = text.split(":", 1)
+            left_lower = left.lower()
+
+            if any(
+                token in left_lower
+                for token in (
+                    "home language",
+                    "additional language",
+                    "language",
+                    "mathematics / mathematical literacy",
+                    "mathematical literacy",
+                    "life orientation / life skills",
+                    "life orientation",
+                    "life skills",
+                    "subject",
+                )
+            ):
+                text = right.strip()
+
+        text = re.sub(
+            r"\s*-\s*Level\s*\d+\s*:?.*$",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        text = re.sub(
+            r"\s*[-–]\s*\d+(?:\.\d+)?\s*%.*$",
+            "",
+            text,
+        )
+
+        return text.strip(" \t\r\n-|,;:–")
+
+    raw = value
+
+    if isinstance(raw, str):
+        stripped = raw.strip()
+
+        if not stripped:
+            return "-"
+
+        if stripped.startswith("[") or stripped.startswith("{"):
             try:
-                parsed = json.loads(candidate)
+                raw = json.loads(stripped)
             except Exception:
-                break
+                raw = stripped
 
-            if isinstance(parsed, str):
-                candidate = parsed.strip()
-                continue
-            break
+    subjects = []
 
-    if isinstance(parsed, dict):
-        parsed = [parsed]
+    if isinstance(raw, list):
+        for item in raw:
+            subject = clean_subject(item)
+            if subject:
+                subjects.append(subject)
 
-    if not isinstance(parsed, list):
-        return value
+    elif isinstance(raw, dict):
+        for item in raw.values():
+            if isinstance(item, list):
+                for child in item:
+                    subject = clean_subject(child)
+                    if subject:
+                        subjects.append(subject)
+            else:
+                subject = clean_subject(item)
+                if subject:
+                    subjects.append(subject)
 
-    readable = []
+    else:
+        for part in re.split(r"\s*\|\s*|\r?\n+", str(raw)):
+            subject = clean_subject(part)
+            if subject:
+                subjects.append(subject)
 
-    for item in parsed:
-        if not isinstance(item, dict):
-            item_text = str(item).strip()
-            if item_text:
-                readable.append(item_text)
-            continue
+    output = []
+    seen = set()
 
-        category = (
-            item.get("category")
-            or item.get("subject_category")
-            or item.get("type")
-            or ""
-        )
-        subject = (
-            item.get("subject")
-            or item.get("subject_name")
-            or item.get("name")
-            or ""
-        )
-        achievement = (
-            item.get("achievement_level")
-            or item.get("achievement")
-            or item.get("result")
-            or item.get("level")
-            or ""
-        )
+    for subject in subjects:
+        key = subject.casefold()
 
-        category = str(category).strip()
-        subject = str(subject).strip()
-        achievement = str(achievement).strip()
+        if key not in seen:
+            seen.add(key)
+            output.append(subject)
 
-        if subject and category:
-            line = f"{category}: {subject}"
-        else:
-            line = subject or category
+    return " | ".join(output) if output else "-"
 
-        if achievement:
-            line = f"{line} - {achievement}" if line else achievement
 
-        if line:
-            readable.append(line)
-
-    if not readable:
-        return "N/A"
-
-    return "  |  ".join(readable)
 
 
 def _gm_prepare_enrolment_display_data(data):

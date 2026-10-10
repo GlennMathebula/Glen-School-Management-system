@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.critical_write_guard import redis_guarded_call
 
 from datetime import date, datetime
 from decimal import Decimal
@@ -8,6 +9,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.database import engine
+from app.redis_client import redis_processing_lock
 from app.services.application_service import (
     change_application_status,
 )
@@ -539,6 +541,55 @@ def get_document_checklist(
             blocking_items
         )
     )
+
+    # GM: include uploaded documents without configured requirements
+    #
+    # Course requirements drive the normal checklist. However, historical
+    # or newly uploaded files must still be visible to Admissions even when
+    # no matching course requirement has been configured.
+    checklist_types = {
+        item["document_type"]
+        for item in checklist
+    }
+
+    for document_row in current_documents:
+        document = dict(
+            document_row
+        )
+
+        document_type = document[
+            "document_type"
+        ]
+
+        if document_type in checklist_types:
+            continue
+
+        request = request_by_type.get(
+            document_type
+        )
+
+        checklist.append(
+            {
+                "source": "Uploaded Document",
+                "document_type": document_type,
+                "document_label": (
+                    document.get(
+                        "document_label"
+                    )
+                    or document_type
+                ),
+                "trigger_stage": "Uploaded",
+                "is_required": False,
+                "blocking_acceptance": False,
+                "requirement": None,
+                "request": request,
+                "document": document,
+            }
+        )
+
+        checklist_types.add(
+            document_type
+        )
 
     return {
         "student_number": student_number,
@@ -1500,6 +1551,63 @@ def _resolve_registration_defaults(
     }
 
 
+def _registration_window_status(
+    defaults: dict,
+) -> dict:
+    cycle = defaults.get("cycle")
+
+    if not cycle:
+        raise ValueError(
+            "Registration cannot be processed because "
+            "no application cycle is configured."
+        )
+
+    start_value = cycle.get(
+        "registration_start_date"
+    )
+    end_value = cycle.get(
+        "registration_end_date"
+    )
+
+    if not start_value or not end_value:
+        raise ValueError(
+            "Registration dates are not configured "
+            "for the selected cycle."
+        )
+
+    def as_date(value):
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        return date.fromisoformat(str(value)[:10])
+
+    registration_start = as_date(start_value)
+    registration_end = as_date(end_value)
+    today = date.today()
+
+    if today < registration_start:
+        raise ValueError(
+            "Registration for cycle "
+            f"{defaults.get('cycle_code')} opens on "
+            f"{registration_start.isoformat()}."
+        )
+
+    if today > registration_end:
+        raise ValueError(
+            "Registration for cycle "
+            f"{defaults.get('cycle_code')} closed on "
+            f"{registration_end.isoformat()}."
+        )
+
+    return {
+        "registration_start_date": registration_start,
+        "registration_end_date": registration_end,
+        "today": today,
+    }
+
+
+@redis_guarded_call("admissions:accept", key_fields=("student_number",), ttl_seconds=120, busy_message="This application acceptance is already being processed.", fail_open=False)
 def accept_application(
     student_number: str,
     *,
@@ -1514,25 +1622,9 @@ def accept_application(
         student_number
     )
 
-    with engine.connect() as connection:
-        existing_registration = (
-            connection.execute(
-                text(
-                    """
-                    SELECT *
-                    FROM public.registrations
-                    WHERE
-                        student_number = :student_number
-                    LIMIT 1
-                    """
-                ),
-                {
-                    "student_number": (
-                        student_number
-                    ),
-                },
-            ).mappings().first()
-        )
+    existing_registration = get_registration(
+        student_number
+    )
 
     if existing_registration:
         if application.get(
@@ -1547,11 +1639,7 @@ def accept_application(
         return {
             "already_processed": True,
             "application": application,
-            "registration": (
-                get_registration(
-                    student_number
-                )
-            ),
+            "registration": existing_registration,
         }
 
     checklist = get_document_checklist(
@@ -1590,86 +1678,22 @@ def accept_application(
         )
     )
 
+    if application.get(
+        "app_status"
+    ) == "Accepted":
+        return {
+            "already_processed": True,
+            "application": application,
+            "registration": None,
+            "registration_defaults": defaults,
+        }
+
     status_result = (
         change_application_status(
             student_number,
             "Accepted",
         )
     )
-
-    try:
-        registration_result = (
-            register_student(
-                student_number=(
-                    student_number
-                ),
-                funding_type=defaults[
-                    "funding_type"
-                ],
-                cycle=defaults[
-                    "cycle_code"
-                ],
-                program_start_date=defaults[
-                    "program_start_date"
-                ],
-                expected_completion_date=(
-                    defaults[
-                        "expected_completion_date"
-                    ]
-                ),
-            )
-        )
-    except Exception as error:
-        _audit(
-            actor=actor,
-            action_code=(
-                "APPLICATION_ACCEPTED_REGISTRATION_FAILED"
-            ),
-            entity_type="APPLICATION",
-            entity_id=str(
-                application[
-                    "id"
-                ]
-            ),
-            description=(
-                "Application accepted, but "
-                "automatic registration failed."
-            ),
-            before_data=application,
-            after_data={
-                "app_status": (
-                    "Accepted"
-                ),
-            },
-            metadata={
-                "error": str(error),
-                "registration_defaults": (
-                    defaults
-                ),
-            },
-        )
-
-        raise RuntimeError(
-            "The application was accepted and "
-            "the acceptance letter was processed, "
-            "but automatic registration failed. "
-            "Use the registration retry action. "
-            f"Reason: {error}"
-        ) from error
-
-    enrolment_form = None
-
-    try:
-        enrolment_form = (
-            generate_student_enrolment_form(
-                student_number
-            )
-        )
-    except Exception as error:
-        enrolment_form = {
-            "generated": False,
-            "error": str(error),
-        }
 
     updated_application = (
         _application(
@@ -1679,49 +1703,30 @@ def accept_application(
 
     _audit(
         actor=actor,
-        action_code=(
-            "APPLICATION_ACCEPTED_AND_REGISTERED"
-        ),
+        action_code="APPLICATION_ACCEPTED",
         entity_type="APPLICATION",
         entity_id=str(
             application["id"]
         ),
         description=(
-            "Application accepted and learner "
-            "registered automatically."
+            "Application accepted. Learner "
+            "registration remains a separate action."
         ),
         before_data=application,
         after_data=updated_application,
         metadata={
-            "status_result": (
-                status_result
-            ),
-            "registration": (
-                registration_result
-            ),
-            "enrolment_form": (
-                enrolment_form
-            ),
-            "registration_defaults": (
-                defaults
-            ),
+            "status_result": status_result,
+            "registration_defaults": defaults,
         },
     )
 
     return {
         "already_processed": False,
         "status": status_result,
-        "registration": (
-            registration_result
-        ),
-        "enrolment_form": (
-            enrolment_form
-        ),
-        "application": (
-            updated_application
-        ),
+        "application": updated_application,
+        "registration": None,
+        "registration_defaults": defaults,
     }
-
 
 def reject_application(
     student_number: str,
@@ -1798,7 +1803,7 @@ def reject_application(
     }
 
 
-def retry_registration(
+def _register_accepted_application_unlocked(
     student_number: str,
     *,
     funding_type: str | None,
@@ -1843,6 +1848,12 @@ def retry_registration(
         )
     )
 
+    registration_window = (
+        _registration_window_status(
+            defaults
+        )
+    )
+
     registration_result = (
         register_student(
             student_number=(
@@ -1881,39 +1892,108 @@ def retry_registration(
 
     _audit(
         actor=actor,
-        action_code=(
-            "APPLICATION_REGISTRATION_RETRIED"
-        ),
+        action_code="APPLICATION_REGISTERED",
         entity_type="APPLICATION",
         entity_id=str(
             application["id"]
         ),
         description=(
-            "Registration retried for "
-            "an Accepted application."
+            "Accepted application registered "
+            "during the configured registration window."
         ),
         before_data=application,
         after_data=application,
         metadata={
-            "registration": (
-                registration_result
+            "registration_result": registration_result,
+            "registration_window": (
+                registration_window
             ),
-            "enrolment_form": (
-                enrolment_form
-            ),
+            "registration_defaults": defaults,
+            "enrolment_form": enrolment_form,
         },
     )
 
     return {
         "already_registered": False,
-        "registration": (
-            registration_result
+        "registration": registration_result,
+        "registration_window": (
+            registration_window
         ),
-        "enrolment_form": (
-            enrolment_form
-        ),
+        "enrolment_form": enrolment_form,
     }
 
+
+def register_accepted_application(
+    student_number: str,
+    *,
+    funding_type: str | None,
+    cycle_code: str | None,
+    program_start_date: date | None,
+    expected_completion_date: date | None,
+    actor: str,
+) -> dict:
+    existing = get_registration(
+        student_number
+    )
+
+    if existing:
+        return {
+            "already_registered": True,
+            "registration": existing,
+        }
+
+    normalized_student_number = str(
+        student_number or ""
+    ).strip().upper()
+
+    lock_key = (
+        "gm:sms:admissions:register:"
+        f"{normalized_student_number}"
+    )
+
+    with redis_processing_lock(
+        lock_key,
+        ttl_seconds=120,
+        busy_message=(
+            "This learner's registration is already "
+            "being processed. Please wait a moment "
+            "and try again."
+        ),
+    ):
+        return _register_accepted_application_unlocked(
+            student_number,
+            funding_type=funding_type,
+            cycle_code=cycle_code,
+            program_start_date=(
+                program_start_date
+            ),
+            expected_completion_date=(
+                expected_completion_date
+            ),
+            actor=actor,
+        )
+
+
+def retry_registration(
+    student_number: str,
+    *,
+    funding_type: str | None,
+    cycle_code: str | None,
+    program_start_date: date | None,
+    expected_completion_date: date | None,
+    actor: str,
+) -> dict:
+    # Backward-compatible wrapper for older clients.
+    return register_accepted_application(
+        student_number,
+        funding_type=funding_type,
+        cycle_code=cycle_code,
+        program_start_date=program_start_date,
+        expected_completion_date=(
+            expected_completion_date
+        ),
+        actor=actor,
+    )
 
 def registration_detail(
     student_number: str,

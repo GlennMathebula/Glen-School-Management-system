@@ -1,4 +1,5 @@
-﻿from uuid import UUID
+from app.communication_dedup import communication_guarded_call
+from uuid import UUID
 
 from sqlalchemy import text
 
@@ -187,6 +188,7 @@ def get_staff_message_directory(
 # STAFF-TO-STAFF MESSAGING
 # ============================================================
 
+@communication_guarded_call("staff-thread-create", key_fields=("sender_staff_code", "recipient_staff_code", "subject", "category", "message_body"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def create_staff_message_thread(
     *,
     sender_staff_code: str,
@@ -495,6 +497,7 @@ def get_staff_message_thread(
     }
 
 
+@communication_guarded_call("staff-thread-reply", key_fields=("staff_code", "thread_id", "message_body"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_staff_message_thread(
     *,
     staff_code: str,
@@ -918,6 +921,7 @@ def get_staff_student_message_thread(
     }
 
 
+@communication_guarded_call("staff-student-thread-reply", key_fields=("staff_code", "thread_id", "message_body"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_student_message_thread(
     *,
     staff_code: str,
@@ -1403,6 +1407,7 @@ def get_staff_announcements(
     ]
 
 
+@communication_guarded_call("announcement-create", key_fields=("staff_code", "title", "message", "announcement_type", "priority", "audience_type", "course_code", "cycle_code", "class_id", "student_number"), recent_seconds=15, lock_ttl_seconds=60, fail_open=True)
 def create_staff_announcement(
     *,
     staff_code: str,
@@ -1569,6 +1574,7 @@ def create_staff_announcement(
     )
 
 
+@communication_guarded_call("announcement-publish", key_fields=("staff_code", "announcement_id"), recent_seconds=30, lock_ttl_seconds=60, fail_open=True)
 def publish_staff_announcement(
     *,
     staff_code: str,

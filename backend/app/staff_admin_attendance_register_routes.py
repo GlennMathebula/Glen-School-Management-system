@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from datetime import date
 from pathlib import Path
 
@@ -23,6 +24,7 @@ router = APIRouter(
 
 
 @router.get("/daily-pack")
+@redis_guarded_endpoint("job:attendance-pack", key_fields=('class_id', 'week_start'), ttl_seconds=600, busy_message="This attendance-register pack is already being generated.", unavailable_message="Attendance-pack generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_generate_daily_attendance_register_pack(
     class_id: str,
     week_start: date,

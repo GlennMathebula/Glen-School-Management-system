@@ -1,9 +1,11 @@
+from app.communication_dedup import communication_guarded_call
 import json
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.database import engine
+from app.application_submission_guard import application_submission_guard
 from app.services.email_service import send_email
 from app.services.pdf_service import (
     generate_acceptance_letter,
@@ -19,7 +21,7 @@ from app.utils.sa_id import validate_sa_id
 # CREATE APPLICATION
 # ============================================================
 
-def create_application(
+def _create_application_unlocked(
     application_data: dict,
 ) -> dict:
 
@@ -266,6 +268,17 @@ Website: www.glenmoniques.co.za
     return application
 
 
+def create_application(
+    application_data: dict,
+) -> dict:
+    with application_submission_guard(
+        application_data
+    ):
+        return _create_application_unlocked(
+            application_data
+        )
+
+
 # ============================================================
 # REGENERATE + RESEND ACKNOWLEDGEMENT
 # ============================================================
@@ -398,6 +411,7 @@ Website: www.glenmoniques.co.za
 # CHANGE APPLICATION STATUS
 # ============================================================
 
+@communication_guarded_call("application-status-change", key_fields=("student_number", "new_status", "outstanding_documents"), recent_seconds=20, lock_ttl_seconds=120, fail_open=True)
 def change_application_status(
     student_number: str,
     new_status: str,

@@ -1,6 +1,9 @@
+from app.redis_read_cache import redis_cached_endpoint
+from app.abuse_rate_limit import enforce_abuse_rate_limit
 from fastapi import APIRouter,Depends,File,Form,HTTPException,UploadFile
 from fastapi.responses import FileResponse
 from app.career_auth_dependency import get_current_career_applicant
+from app.auth_rate_limit import enforce_auth_rate_limit
 from app.models.careers_hr import CareerApplicantLogin,CareerApplicantRegister,CareerApplicationDraftCreate,CareerPasswordChange
 from app.services.career_auth_service import authenticate_applicant,change_applicant_password,create_applicant_account
 from app.services.careers_service import applicant_number,create_application_draft,get_my_application,get_public_vacancy,list_my_applications,list_public_vacancies,owned_document_path,submit_application,upload_document,withdraw_application
@@ -10,22 +13,47 @@ router=APIRouter(prefix='/api/careers',tags=['Public Careers'])
 def bad(e,code=400): raise HTTPException(code,str(e)) from e
 @router.post('/auth/register')
 def register(p:CareerApplicantRegister):
+    # REDIS_AUTH_RATE_LIMIT: careers-register
+    enforce_auth_rate_limit(
+        scope="careers-register",
+        identity=p.email,
+        limit=3,
+        window_seconds=3600,
+    )
+
     try:return {'success':True,'account':create_applicant_account(applicant_number=applicant_number(),**p.model_dump())}
     except ValueError as e:bad(e)
 @router.post('/auth/login')
 def login(p:CareerApplicantLogin):
+    # REDIS_AUTH_RATE_LIMIT: careers-login
+    enforce_auth_rate_limit(
+        scope="careers-login",
+        identity=p.email,
+        limit=8,
+        window_seconds=300,
+    )
+
     try:return {'success':True,**authenticate_applicant(**p.model_dump())}
     except ValueError as e:bad(e,401)
 @router.get('/auth/me')
 def me(a:dict=Depends(get_current_career_applicant)):return {'success':True,'account':a}
 @router.post('/auth/change-password')
 def change(p:CareerPasswordChange,a:dict=Depends(get_current_career_applicant)):
+    # REDIS_ABUSE_RATE_LIMIT: careers-change-password
+    enforce_abuse_rate_limit(
+        scope="careers-change-password",
+        identity=str(a["id"]),
+        limit=5,
+        window_seconds=600,
+    )
     try:change_applicant_password(applicant_id=str(a['id']),**p.model_dump());return {'success':True,'message':'Password changed successfully.'}
     except ValueError as e:bad(e)
 @router.get('/vacancies')
+@redis_cached_endpoint("careers-vacancies", key_fields=(), ttl_seconds=120)
 def vacancies():
     x=list_public_vacancies();return {'success':True,'count':len(x),'vacancies':x}
 @router.get('/vacancies/{vacancy_code}')
+@redis_cached_endpoint("careers-vacancies", key_fields=("vacancy_code",), ttl_seconds=120)
 def vacancy(vacancy_code:str):
     try:return {'success':True,'vacancy':get_public_vacancy(vacancy_code)}
     except ValueError as e:bad(e,404)

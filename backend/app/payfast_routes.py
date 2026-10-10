@@ -1,3 +1,5 @@
+from app.redis_client import RedisLockBusyError, RedisLockUnavailableError
+from app.critical_write_guard import redis_guarded_endpoint
 from collections import OrderedDict
 
 from fastapi import (
@@ -39,6 +41,7 @@ router = APIRouter(
 @router.post(
     "/api/student/finance/payfast/start"
 )
+@redis_guarded_endpoint("finance:student", key_fields=("current_student.student_number",), ttl_seconds=120, busy_message="A payment for this learner is already being started.", unavailable_message="Payment processing protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def start_payment(
     payload: PayFastStartRequest,
     current_student: dict = Depends(
@@ -239,6 +242,26 @@ async def payfast_notify(
         return PlainTextResponse(
             content="OK",
             status_code=200,
+        )
+
+    except RedisLockBusyError as error:
+        print(
+            "PayFast ITN busy:",
+            error,
+        )
+        return PlainTextResponse(
+            content="BUSY",
+            status_code=409,
+        )
+
+    except RedisLockUnavailableError as error:
+        print(
+            "PayFast ITN Redis unavailable:",
+            error,
+        )
+        return PlainTextResponse(
+            content="RETRY",
+            status_code=503,
         )
 
     except Exception as error:

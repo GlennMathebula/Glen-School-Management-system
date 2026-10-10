@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from pathlib import Path
 
 from fastapi import (
@@ -69,6 +70,7 @@ def student_completion_documents(
     "/api/student/completion-documents/"
     "letter-of-completion"
 )
+@redis_guarded_endpoint("job:completion-letter", key_fields=("current_student.student_number",), ttl_seconds=300, busy_message="Your completion letter is already being generated.", unavailable_message="Completion-letter generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def download_letter_of_completion(
     current_student: dict = Depends(
         require_full_student_access
@@ -115,6 +117,7 @@ def download_letter_of_completion(
     "/api/student/completion-documents/"
     "graduation-letter"
 )
+@redis_guarded_endpoint("job:graduation-letter", key_fields=("current_student.student_number",), ttl_seconds=300, busy_message="Your graduation letter is already being generated.", unavailable_message="Graduation-letter generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def download_graduation_letter(
     current_student: dict = Depends(
         require_full_student_access

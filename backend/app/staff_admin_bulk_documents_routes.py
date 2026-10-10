@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -35,6 +36,7 @@ def admin_bulk_document_scope(
 
 
 @router.get("/zip")
+@redis_guarded_endpoint("job:bulk-documents", key_fields=("document_type", "scope_type", "scope_value"), ttl_seconds=1800, busy_message="This bulk document job is already being generated.", unavailable_message="Bulk document job protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_bulk_documents_zip(
     document_type: str = Query(...),
     scope_type: str = Query(...),

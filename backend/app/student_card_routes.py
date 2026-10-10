@@ -1,3 +1,5 @@
+from app.critical_write_guard import redis_guarded_endpoint
+from app.abuse_rate_limit import enforce_abuse_rate_limit
 from fastapi import (
     APIRouter,
     Depends,
@@ -757,6 +759,7 @@ def get_student_card_qr(
 @router.get(
     "/api/student/card/pdf"
 )
+@redis_guarded_endpoint("job:student-card-pdf", key_fields=("current_student.student_number",), ttl_seconds=300, busy_message="Your student card PDF is already being generated.", unavailable_message="Student card generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def get_student_card_pdf(
     current_student: dict = Depends(
         require_full_student_access
@@ -843,6 +846,13 @@ def public_verify_student_card(
     token: str,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: public-student-card-verify
+    enforce_abuse_rate_limit(
+        scope="public-student-card-verify",
+        identity=token,
+        limit=60,
+        window_seconds=300,
+    )
     try:
 
         result = (

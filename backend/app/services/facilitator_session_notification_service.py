@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 import hashlib
 import html
 from datetime import (
@@ -780,6 +781,7 @@ def build_session_email(
 # NOTIFY LEARNERS
 # ============================================================
 
+@communication_guarded_call("facilitator-session-notify", key_fields=("staff_code", "timetable_session_id", "force_resend"), recent_seconds=30, lock_ttl_seconds=120, fail_open=True, duplicate_mode="notification_batch")
 def notify_learners_about_session(
     *,
     staff_code: str,

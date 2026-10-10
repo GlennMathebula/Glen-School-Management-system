@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from fastapi import (
     APIRouter,
     Depends,
@@ -96,6 +97,7 @@ def admin_enrolment_form_status(
 @router.post(
     "/{student_number}/enrolment-form/generate"
 )
+@redis_guarded_endpoint("job:enrolment-form", key_fields=("student_number",), ttl_seconds=300, busy_message="This enrolment form is already being generated.", unavailable_message="Enrolment-form generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_generate_enrolment_form(
     student_number: str,
     current_staff: dict = Depends(

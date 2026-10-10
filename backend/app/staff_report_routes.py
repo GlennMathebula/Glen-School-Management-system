@@ -1,3 +1,5 @@
+from app.critical_write_guard import redis_guarded_endpoint
+from app.redis_read_cache import redis_cached_endpoint
 from datetime import date
 from pathlib import Path
 
@@ -30,6 +32,7 @@ require_view_reports = require_permission(
 
 
 @router.get("/catalog")
+@redis_cached_endpoint("report-catalog", key_fields=(), ttl_seconds=600)
 def staff_report_catalog(
     current_staff: dict = Depends(
         require_view_reports
@@ -90,6 +93,7 @@ def staff_report_preview(
 
 
 @router.get("/{report_code}/pdf")
+@redis_guarded_endpoint("job:staff-report-pdf", key_fields=("report_code", "cycle_code", "course_code", "class_code", "date_from", "date_to"), ttl_seconds=600, busy_message="This report PDF is already being generated.", unavailable_message="Report generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def staff_report_pdf(
     report_code: str,
     cycle_code: str | None = Query(default=None),

@@ -4,6 +4,7 @@ from fastapi import (
     HTTPException,
 )
 
+from app.auth_rate_limit import enforce_auth_rate_limit
 from app.models.staff_auth import (
     StaffLoginRequest,
     StaffOtpResendRequest,
@@ -43,6 +44,14 @@ router = APIRouter(
 def staff_login(
     payload: StaffLoginRequest,
 ):
+
+    # REDIS_AUTH_RATE_LIMIT: staff-login
+    enforce_auth_rate_limit(
+        scope="staff-login",
+        identity=payload.staff_code,
+        limit=8,
+        window_seconds=300,
+    )
 
     try:
 
@@ -155,6 +164,14 @@ def verify_staff_login_otp(
     payload: StaffOtpVerifyRequest,
 ):
 
+    # REDIS_AUTH_RATE_LIMIT: staff-otp-verify
+    enforce_auth_rate_limit(
+        scope="staff-otp-verify",
+        identity=payload.challenge_token,
+        limit=8,
+        window_seconds=600,
+    )
+
     try:
 
         return verify_staff_otp(
@@ -202,6 +219,14 @@ def verify_staff_login_otp(
 def resend_staff_login_otp(
     payload: StaffOtpResendRequest,
 ):
+
+    # REDIS_AUTH_RATE_LIMIT: staff-otp-resend
+    enforce_auth_rate_limit(
+        scope="staff-otp-resend",
+        identity=payload.challenge_token,
+        limit=3,
+        window_seconds=600,
+    )
 
     try:
 

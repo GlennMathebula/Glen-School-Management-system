@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from uuid import UUID
 
 from sqlalchemy import text
@@ -605,6 +606,7 @@ def get_staff_student_message_thread(
 # REPLY TO STUDENT MESSAGE THREAD
 # ============================================================
 
+@communication_guarded_call("legacy-staff-student-reply", key_fields=("staff_code", "thread_id", "message_body"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_student_message_thread(
     *,
     staff_code: str,
@@ -1300,6 +1302,7 @@ def get_staff_student_support_ticket(
 # REPLY TO STUDENT SUPPORT TICKET
 # ============================================================
 
+@communication_guarded_call("legacy-staff-support-reply", key_fields=("staff_code", "ticket_id", "message_body"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_student_support_ticket(
     *,
     staff_code: str,

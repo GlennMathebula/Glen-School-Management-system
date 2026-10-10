@@ -1,0 +1,1616 @@
+GLEN MONIQUES - APPLICATION ACCEPT + EMAIL SOURCE SCAN
+Generated: 2026-10-10 05:52:03
+Project root: C:\Projects\Glen Moniques SMS
+
+========================================================================================
+1. EMAIL SERVICE - IMPORTS + send_email + SMTP CONNECTION
+========================================================================================
+
+FILE: backend\app\services\email_service.py
+
+--- lines 1-168 ---
+    1: import mimetypes
+    2: import smtplib
+    3: from email.message import EmailMessage
+    4: from pathlib import Path
+    5: 
+    6: from app.config import settings
+    7: 
+    8: # ============================================================
+    9: # SMTP VALIDATION
+   10: # ============================================================
+   11: 
+   12: def validate_email_configuration() -> None:
+   13: 
+   14:     missing = []
+   15: 
+   16:     if not settings.smtp_host:
+   17:         missing.append("SMTP_HOST")
+   18: 
+   19:     if not settings.smtp_username:
+   20:         missing.append("SMTP_USERNAME")
+   21: 
+   22:     if not settings.smtp_password:
+   23:         missing.append("SMTP_PASSWORD")
+   24: 
+   25:     if not settings.smtp_from_email:
+   26:         missing.append("SMTP_FROM_EMAIL")
+   27: 
+   28:     if missing:
+   29: 
+   30:         raise RuntimeError(
+   31:             "Email is not configured. Missing: "
+   32:             + ", ".join(missing)
+   33:         )
+   34: 
+   35: 
+   36: # ============================================================
+   37: # SEND EMAIL
+   38: # ============================================================
+   39: 
+   40: def send_email(
+   41:     *,
+   42:     recipient_email: str,
+   43:     subject: str,
+   44:     html_body: str,
+   45:     text_body: str | None = None,
+   46:     attachment_path: str | Path | None = None,
+   47:     attachment_name: str | None = None,
+   48: ) -> None:
+   49: 
+   50:     validate_email_configuration()
+   51: 
+   52:     message = EmailMessage()
+   53: 
+   54:     message[
+   55:         "From"
+   56:     ] = (
+   57:         f"{settings.smtp_from_name} "
+   58:         f"<{settings.smtp_from_email}>"
+   59:     )
+   60: 
+   61:     message[
+   62:         "To"
+   63:     ] = recipient_email
+   64: 
+   65:     message[
+   66:         "Subject"
+   67:     ] = subject
+   68: 
+   69:     if text_body is None:
+   70: 
+   71:         text_body = (
+   72:             "Please view this email in an "
+   73:             "HTML-compatible email client."
+   74:         )
+   75: 
+   76:     message.set_content(
+   77:         text_body
+   78:     )
+   79: 
+   80:     message.add_alternative(
+   81:         html_body,
+   82:         subtype="html",
+   83:     )
+   84: 
+   85:     # --------------------------------------------------------
+   86:     # ATTACHMENT
+   87:     # --------------------------------------------------------
+   88: 
+   89:     if attachment_path:
+   90: 
+   91:         attachment_path = Path(
+   92:             attachment_path
+   93:         )
+   94: 
+   95:         if not attachment_path.exists():
+   96: 
+   97:             raise FileNotFoundError(
+   98:                 f"Attachment not found: "
+   99:                 f"{attachment_path}"
+  100:             )
+  101: 
+  102:         mime_type, _ = (
+  103:             mimetypes.guess_type(
+  104:                 str(
+  105:                     attachment_path
+  106:                 )
+  107:             )
+  108:         )
+  109: 
+  110:         if mime_type:
+  111: 
+  112:             maintype, subtype = (
+  113:                 mime_type.split(
+  114:                     "/",
+  115:                     1,
+  116:                 )
+  117:             )
+  118: 
+  119:         else:
+  120: 
+  121:             maintype = (
+  122:                 "application"
+  123:             )
+  124: 
+  125:             subtype = (
+  126:                 "octet-stream"
+  127:             )
+  128: 
+  129:         with attachment_path.open(
+  130:             "rb"
+  131:         ) as file:
+  132: 
+  133:             message.add_attachment(
+  134:                 file.read(),
+  135:                 maintype=maintype,
+  136:                 subtype=subtype,
+  137:                 filename=(
+  138:                     attachment_name
+  139:                     or attachment_path.name
+  140:                 ),
+  141:             )
+  142: 
+  143:     # --------------------------------------------------------
+  144:     # SMTP CONNECTION
+  145:     # --------------------------------------------------------
+  146: 
+  147:     with smtplib.SMTP(
+  148:         settings.smtp_host,
+  149:         settings.smtp_port,
+  150:         timeout=30,
+  151:     ) as server:
+  152: 
+  153:         server.ehlo()
+  154: 
+  155:         if settings.smtp_use_tls:
+  156: 
+  157:             server.starttls()
+  158: 
+  159:             server.ehlo()
+  160: 
+  161:         server.login(
+  162:             settings.smtp_username,
+  163:             settings.smtp_password,
+  164:         )
+  165: 
+  166:         server.send_message(
+  167:             message
+  168:         )
+
+
+========================================================================================
+2. EMAIL CONFIG - SMTP SETTINGS
+========================================================================================
+
+FILE: backend\app\config.py
+
+--- lines 77-136 ---
+   77: 
+   78:     payfast_return_url: str = (
+   79:         "http://127.0.0.1:8000/"
+   80:         "api/payments/payfast/return"
+   81:     )
+   82: 
+   83:     payfast_cancel_url: str = (
+   84:         "http://127.0.0.1:8000/"
+   85:         "api/payments/payfast/cancel"
+   86:     )
+   87: 
+   88:     payfast_notify_url: str = (
+   89:         "http://127.0.0.1:8000/"
+   90:         "api/payments/payfast/notify"
+   91:     )
+   92: 
+   93:     # ========================================================
+   94:     # SMTP
+   95:     # ========================================================
+   96: 
+   97:     smtp_host: str | None = None
+   98: 
+   99:     smtp_port: int = 587
+  100: 
+  101:     smtp_username: str | None = None
+  102: 
+  103:     smtp_password: str | None = None
+  104: 
+  105:     smtp_from_email: str = (
+  106:         "glenmoniquesptyltd@gmail.com"
+  107:     )
+  108: 
+  109:     smtp_from_name: str = (
+  110:         "Glen Moniques"
+  111:     )
+  112: 
+  113:     smtp_use_tls: bool = True
+  114: 
+  115:     # ========================================================
+  116:     # GEMINI AI
+  117:     # ========================================================
+  118: 
+  119:     gemini_api_key: str | None = None
+  120: 
+  121:     gemini_model: str = (
+  122:         "gemini-3.8-flash"
+  123:     )
+  124: 
+  125:     # ========================================================
+  126:     # SETTINGS
+  127:     # ========================================================
+  128: 
+  129:     model_config = SettingsConfigDict(
+  130:         env_file=".env",
+  131:         env_file_encoding="utf-8",
+  132:         case_sensitive=False,
+  133:     )
+  134: 
+  135: 
+  136: settings = Settings()
+
+
+========================================================================================
+3. ADMIN V3 - INDIVIDUAL ACCEPT FLOW
+========================================================================================
+
+FILE: frontends\staff-desktop\src\AdminV3.jsx
+
+--- lines 72-289 ---
+   72: 
+   73:    setDocs(
+   74:     checklist
+   75:    );
+   76: 
+   77:    setRequestSelected([]);
+   78:    setSt({e:"",m:""});
+   79:   }catch(e){
+   80:    setSt({e:e.message,m:""});
+   81:   }
+   82:  };
+   83: 
+   84:  const doPost=async(path,body,msg)=>{
+   85:   try{
+   86:    const result=await send(
+   87:     token,
+   88:     path,
+   89:     "POST",
+   90:     body
+   91:    );
+   92: 
+   93:    setSt({e:"",m:msg});
+   94:    list.refresh();
+   95: 
+   96:    if(sel){
+   97:     await open(sel);
+   98:    }
+   99: 
+  100:    return result;
+  101:   }catch(e){
+  102:    setSt({e:e.message,m:""});
+  103:    return null;
+  104:   }
+  105:  };
+  106: 
+  107:  const accept=()=>{
+  108:   if(!sel)return;
+  109: 
+  110:   const cycle=prompt(
+  111:    "Cycle code (leave blank to use the application's configured cycle):",
+  112:    ""
+  113:   );
+  114: 
+  115:   if(cycle===null)return;
+  116: 
+  117:   const start=prompt(
+  118:    "Programme start date YYYY-MM-DD (leave blank to use the cycle default):",
+  119:    ""
+  120:   );
+  121: 
+  122:   if(start===null)return;
+  123: 
+  124:   const end=prompt(
+  125:    "Expected completion date YYYY-MM-DD (optional):",
+  126:    ""
+  127:   );
+  128: 
+  129:   if(end===null)return;
+  130: 
+  131:   doPost(
+  132:    `/api/staff/admissions/applications/${sel}/accept`,
+  133:    {
+  134:     funding_type:null,
+  135:     cycle_code:cycle||null,
+  136:     program_start_date:start||null,
+  137:     expected_completion_date:end||null,
+  138:     enforce_documents:true
+  139:    },
+  140:    "Application accepted and registration processed."
+  141:   );
+  142:  };
+  143: 
+  144:  const reject=()=>{
+  145:   if(!sel)return;
+  146: 
+  147:   const reason=prompt(
+  148:    "Rejection reason:",
+  149:    ""
+  150:   );
+  151: 
+  152:   if(reason===null)return;
+  153: 
+  154:   doPost(
+  155:    `/api/staff/admissions/applications/${sel}/reject`,
+  156:    {reason:reason||null},
+  157:    "Application rejected."
+  158:   );
+  159:  };
+  160: 
+  161:  const retryRegistration=()=>{
+  162:   if(!sel)return;
+  163: 
+  164:   const cycle=prompt(
+  165:    "Cycle code (optional):",
+  166:    ""
+  167:   );
+  168: 
+  169:   if(cycle===null)return;
+  170: 
+  171:   const start=prompt(
+  172:    "Programme start date YYYY-MM-DD (optional):",
+  173:    ""
+  174:   );
+  175: 
+  176:   if(start===null)return;
+  177: 
+  178:   const end=prompt(
+  179:    "Expected completion date YYYY-MM-DD (optional):",
+  180:    ""
+  181:   );
+  182: 
+  183:   if(end===null)return;
+  184: 
+  185:   doPost(
+  186:    `/api/staff/admissions/applications/${sel}/registration/retry`,
+  187:    {
+  188:     funding_type:null,
+  189:     cycle_code:cycle||null,
+  190:     program_start_date:start||null,
+  191:     expected_completion_date:end||null
+  192:    },
+  193:    "Registration retry processed."
+  194:   );
+  195:  };
+  196: 
+  197:  const review=async(row,action)=>{
+  198:   const id=(
+  199:    row.document?.id
+  200:    ||row.document_id
+  201:    ||row.id
+  202:   );
+  203: 
+  204:   if(!id){
+  205:    setSt({
+  206:     e:"No uploaded document is attached to this checklist item.",
+  207:     m:""
+  208:    });
+  209:    return;
+  210:   }
+  211: 
+  212:   let notes=null;
+  213: 
+  214:   if(action!=="Approved"){
+  215:    notes=prompt(
+  216:     action==="Resubmission Required"
+  217:      ?"Reason/instructions for re-upload:"
+  218:      :"Document rejection reason:",
+  219:     row.document?.review_notes||""
+  220:    );
+  221: 
+  222:    if(notes===null)return;
+  223: 
+  224:    if(!notes.trim()){
+  225:     setSt({
+  226:      e:"Review notes are required for this action.",
+  227:      m:""
+  228:     });
+  229:     return;
+  230:    }
+  231:   }
+  232: 
+  233:   try{
+  234:    await send(
+  235:     token,
+  236:     `/api/staff/admissions/documents/${id}/review`,
+  237:     "PATCH",
+  238:     {
+  239:      action,
+  240:      review_notes:notes?.trim()||null
+  241:     }
+  242:    );
+  243: 
+  244:    setSt({
+  245:     e:"",
+  246:     m:
+  247:      action==="Approved"
+  248:       ?"Document approved."
+  249:       :action==="Rejected"
+  250:        ?"Document rejected."
+  251:        :"Re-upload requested."
+  252:    });
+  253: 
+  254:    await open(sel);
+  255:   }catch(e){
+  256:    setSt({e:e.message,m:""});
+  257:   }
+  258:  };
+  259: 
+  260:  const previewDocument=async row=>{
+  261:   const doc=row.document;
+  262: 
+  263:   if(!doc?.id){
+  264:    setSt({
+  265:     e:"There is no uploaded file to preview for this requirement.",
+  266:     m:""
+  267:    });
+  268:    return;
+  269:   }
+  270: 
+  271:   try{
+  272:    const result=await API.fetchBlob(
+  273:     `/api/staff/admissions/documents/${doc.id}/preview`,
+  274:     token
+  275:    );
+  276: 
+  277:    if(preview?.url){
+  278:     URL.revokeObjectURL(
+  279:      preview.url
+  280:     );
+  281:    }
+  282: 
+  283:    const url=URL.createObjectURL(
+  284:     result.blob
+  285:    );
+  286: 
+  287:    setPreview({
+  288:     url,
+  289:     mime:
+
+--- lines 331-490 ---
+  331:   }else{
+  332:    setSelected(current=>
+  333:     Array.from(
+  334:      new Set([
+  335:       ...current,
+  336:       ...visible
+  337:      ])
+  338:     )
+  339:    );
+  340:   }
+  341:  };
+  342: 
+  343:  const bulkAccept=async()=>{
+  344:   if(!selected.length){
+  345:    setSt({
+  346:     e:"Select at least one application.",
+  347:     m:""
+  348:    });
+  349:    return;
+  350:   }
+  351: 
+  352:   if(!window.confirm(
+  353:    `Accept and register ${selected.length} selected application(s)? Required documents will be enforced.`
+  354:   )){
+  355:    return;
+  356:   }
+  357: 
+  358:   const cycle=prompt(
+  359:    "Shared cycle code (optional - leave blank to use each application's configured/default cycle):",
+  360:    ""
+  361:   );
+  362: 
+  363:   if(cycle===null)return;
+  364: 
+  365:   const start=prompt(
+  366:    "Shared programme start date YYYY-MM-DD (optional):",
+  367:    ""
+  368:   );
+  369: 
+  370:   if(start===null)return;
+  371: 
+  372:   const end=prompt(
+  373:    "Shared expected completion date YYYY-MM-DD (optional):",
+  374:    ""
+  375:   );
+  376: 
+  377:   if(end===null)return;
+  378: 
+  379:   try{
+  380:    const result=await send(
+  381:     token,
+  382:     "/api/staff/admissions/bulk/accept",
+  383:     "POST",
+  384:     {
+  385:      student_numbers:selected,
+  386:      funding_type:null,
+  387:      cycle_code:cycle||null,
+  388:      program_start_date:start||null,
+  389:      expected_completion_date:end||null,
+  390:      enforce_documents:true
+  391:     }
+  392:    );
+  393: 
+  394:    setBulkResult(
+  395:     result.results||[]
+  396:    );
+  397: 
+  398:    setSt({
+  399:     e:"",
+  400:     m:`Bulk accept completed: ${result.success_count} successful, ${result.failure_count} failed.`
+  401:    });
+  402: 
+  403:    setSelected([]);
+  404:    list.refresh();
+  405:   }catch(e){
+  406:    setSt({e:e.message,m:""});
+  407:   }
+  408:  };
+  409: 
+  410:  const bulkReject=async()=>{
+  411:   if(!selected.length){
+  412:    setSt({
+  413:     e:"Select at least one application.",
+  414:     m:""
+  415:    });
+  416:    return;
+  417:   }
+  418: 
+  419:   const reason=prompt(
+  420:    `Rejection reason for ${selected.length} selected application(s):`,
+  421:    ""
+  422:   );
+  423: 
+  424:   if(reason===null)return;
+  425: 
+  426:   if(!window.confirm(
+  427:    `Reject ${selected.length} selected application(s)?`
+  428:   )){
+  429:    return;
+  430:   }
+  431: 
+  432:   try{
+  433:    const result=await send(
+  434:     token,
+  435:     "/api/staff/admissions/bulk/reject",
+  436:     "POST",
+  437:     {
+  438:      student_numbers:selected,
+  439:      reason:reason.trim()||null
+  440:     }
+  441:    );
+  442: 
+  443:    setBulkResult(
+  444:     result.results||[]
+  445:    );
+  446: 
+  447:    setSt({
+  448:     e:"",
+  449:     m:`Bulk reject completed: ${result.success_count} successful, ${result.failure_count} failed.`
+  450:    });
+  451: 
+  452:    setSelected([]);
+  453:    list.refresh();
+  454:   }catch(e){
+  455:    setSt({e:e.message,m:""});
+  456:   }
+  457:  };
+  458: 
+  459:  const toggleRequest=documentType=>{
+  460:   setRequestSelected(current=>
+  461:    current.includes(documentType)
+  462:     ?current.filter(x=>x!==documentType)
+  463:     :[...current,documentType]
+  464:   );
+  465:  };
+  466: 
+  467:  const requestDocuments=async()=>{
+  468:   if(!sel){
+  469:    setSt({
+  470:     e:"Open an application first.",
+  471:     m:""
+  472:    });
+  473:    return;
+  474:   }
+  475: 
+  476:   const chosen=docs.filter(
+  477:    row=>
+  478:     requestSelected.includes(
+  479:      row.document_type
+  480:     )
+  481:   );
+  482: 
+  483:   if(!chosen.length){
+  484:    setSt({
+  485:     e:"Select at least one missing document to request.",
+  486:     m:""
+  487:    });
+  488:    return;
+  489:   }
+  490: 
+
+--- lines 552-1076 ---
+  552: 
+  553:  <Panel title={`Applications (${applications.length})`} text={`${selected.length} application(s) selected.`} actions={<div className="button-row"><button className="button gold" disabled={!selected.length} onClick={bulkAccept}>Accept Selected</button><Button danger onClick={bulkReject}>Reject Selected</Button><Button onClick={list.refresh}>Refresh</Button></div>}>
+  554:   <Alert e={list.e}/>
+  555:   {!applications.length?<div className="empty">No applications found.</div>:<div className="table-wrap"><table><thead><tr><th><input type="checkbox" checked={applications.length>0&&applications.every(x=>selected.includes(x.student_number))} onChange={toggleAll}/></th><th>Student Number</th><th>Name</th><th>Course</th><th>Cycle</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{applications.map(r=><tr key={r.student_number}><td><input type="checkbox" checked={selected.includes(r.student_number)} onChange={()=>toggleSelected(r.student_number)}/></td><td>{v(r.student_number)}</td><td>{[r.first_name,r.middle_name,r.last_name].filter(Boolean).join(" ")}</td><td>{v(r.course_code||r.qualification_id)}</td><td>{v(r.cycle_code)}</td><td><span className="badge">{v(r.app_status)}</span></td><td>{v(r.created_at)}</td><td><Button onClick={()=>open(r.student_number)}>Open</Button></td></tr>)}</tbody></table></div>}
+  556:  </Panel>
+  557: 
+  558:  {bulkResult.length>0&&<Panel title="Bulk Action Results" text="Each learner is processed separately so one failure does not hide successful records."><Tbl rows={bulkResult.map(x=>({student_number:x.student_number,status:x.success?"Success":"Failed",message:x.message||x.error||""}))} cols={["student_number","status","message"]}/></Panel>}
+  559: 
+  560:  {sel&&<><Panel title={`Application ${sel}`} actions={<div className="button-row"><button className="button gold" onClick={accept}>Accept & Register</button><Button danger onClick={reject}>Reject</Button><Button onClick={retryRegistration}>Retry Registration</Button></div>}><Obj data={detail?.application||detail||{}}/></Panel>
+  561: 
+  562:  <Panel title="Uploaded Documents & Review" text="Preview the actual uploaded PDF/JPG/PNG before approving, rejecting or requesting a corrected re-upload.">
+  563:   {!docs.length?<div className="empty">No document requirements are configured for this application.</div>:<div className="table-wrap"><table><thead><tr><th>Document</th><th>Required</th><th>Stage</th><th>Uploaded File</th><th>Review Status</th><th>Request Status</th><th>Actions</th></tr></thead><tbody>{docs.map((row,i)=>{const doc=row.document||null;const req=row.request||null;return <tr key={`${row.document_type}-${i}`}><td>{v(row.document_label||row.document_type)}</td><td>{row.is_required?"Yes":"No"}</td><td>{v(row.trigger_stage)}</td><td>{doc?v(doc.original_filename):"Not uploaded"}</td><td><span className="badge">{v(doc?.review_status||"Not Uploaded")}</span></td><td><span className="badge">{v(req?.status||"â€”")}</span></td><td><div className="button-row">{doc&&<Button onClick={()=>previewDocument(row)}>Preview</Button>}{doc&&<Button onClick={()=>review(row,"Approved")}>Approve</Button>}{doc&&<Button danger onClick={()=>review(row,"Rejected")}>Reject</Button>}{doc&&<Button onClick={()=>review(row,"Resubmission Required")}>Request Re-upload</Button>}</div></td></tr>})}</tbody></table></div>}
+  564:  </Panel>
+  565: 
+  566:  {preview&&<Panel title={`Document Preview - ${preview.name}`} actions={<Button onClick={closePreview}>Close Preview</Button>}>
+  567:   <div style={{minHeight:"650px"}}>
+  568:    {preview.mime.startsWith("image/")?<img src={preview.url} alt={preview.name} style={{maxWidth:"100%",maxHeight:"780px",display:"block",margin:"0 auto"}}/>:<iframe title={preview.name} src={preview.url} style={{width:"100%",height:"760px",border:"1px solid #d5d9e2",borderRadius:"10px",background:"#fff"}}/>}
+  569:   </div>
+  570:  </Panel>}
+  571: 
+  572:  <Panel title="Request Missing Documents" text="Select missing configured requirements. The learner will be placed in Outstanding Documents status and the normal outstanding-document workflow will run.">
+  573:   {!requestable.length?<div className="empty">There are no currently missing configured documents to request.</div>:<><div className="table-wrap"><table><thead><tr><th>Select</th><th>Document</th><th>Required</th><th>Stage</th></tr></thead><tbody>{requestable.map(row=><tr key={row.document_type}><td><input type="checkbox" checked={requestSelected.includes(row.document_type)} onChange={()=>toggleRequest(row.document_type)}/></td><td>{v(row.document_label||row.document_type)}</td><td>{row.is_required?"Yes":"No"}</td><td>{v(row.trigger_stage)}</td></tr>)}</tbody></table></div><div className="form-grid"><label><span>Reason</span><input value={requestReason} onChange={e=>setRequestReason(e.target.value)} placeholder="Why the document is required"/></label><label><span>Due Date</span><input type="date" value={requestDueDate} onChange={e=>setRequestDueDate(e.target.value)}/></label><label><span>Instructions</span><input value={requestInstructions} onChange={e=>setRequestInstructions(e.target.value)} placeholder="Upload instructions"/></label></div><button className="button gold" onClick={requestDocuments}>Request Selected Documents</button></>}
+  574:  </Panel></>}</>
+  575: }
+  576: 
+  577: 
+  578: export function Academics({token}){
+  579:  const cyc=useGet("/api/staff/academic-management/cycles",token);
+  580:  const cou=useGet("/api/staff/academic-management/courses",token);
+  581:  const cls=useGet("/api/staff/desktop-v5/academic-classes",token);
+  582:  const staff=useGet("/api/staff/desktop-v5/academic-staff-options",token);
+  583: 
+  584:  const[st,setSt]=useState({e:"",m:""});
+  585: 
+  586:  const[cycleForm,setCycleForm]=useState({
+  587:   cycle_code:"",
+  588:   cycle_name:"",
+  589:   application_start_date:"",
+  590:   application_end_date:"",
+  591:   registration_start_date:"",
+  592:   registration_end_date:"",
+  593:   program_start_date:"",
+  594:   expected_completion_date:"",
+  595:   cipc_required:false,
+  596:   status:"Draft"
+  597:  });
+  598: 
+  599:  const[selectedCycle,setSelectedCycle]=useState(null);
+  600:  const[cycleStatus,setCycleStatus]=useState("Draft");
+  601:  const[cycleCourses,setCycleCourses]=useState([]);
+  602: 
+  603:  const[classForm,setClassForm]=useState({
+  604:   class_code:"",
+  605:   class_name:"",
+  606:   course_code:"",
+  607:   cycle_code:"",
+  608:   class_group:"",
+  609:   status:"Draft"
+  610:  });
+  611: 
+  612:  const[selectedClass,setSelectedClass]=useState(null);
+  613:  const[classEdit,setClassEdit]=useState({
+  614:   class_name:"",
+  615:   class_group:"",
+  616:   status:"Draft"
+  617:  });
+  618:  const[facilitatorCode,setFacilitatorCode]=useState("");
+  619:  const[assessorCode,setAssessorCode]=useState("");
+  620:  const[moderatorCode,setModeratorCode]=useState("");
+  621:  const[classLearners,setClassLearners]=useState([]);
+  622:  const[eligibleLearners,setEligibleLearners]=useState([]);
+  623: 
+  624:  const cycles=cyc.data?.cycles||[];
+  625:  const courses=cou.data?.courses||[];
+  626:  const classes=cls.data?.classes||[];
+  627:  const staffRows=staff.data?.staff||staff.data?.staff_options||[];
+  628: 
+  629:  const facilitators=staffRows.filter(
+  630:   x=>Boolean(x.can_facilitate)
+  631:  );
+  632:  const assessors=staffRows.filter(
+  633:   x=>Boolean(x.can_assess)
+  634:  );
+  635:  const moderators=staffRows.filter(
+  636:   x=>Boolean(x.can_moderate)
+  637:  );
+  638: 
+  639:  const changeCycle=(key,value)=>{
+  640:   setCycleForm(x=>({...x,[key]:value}));
+  641:  };
+  642: 
+  643:  const changeClass=(key,value)=>{
+  644:   setClassForm(x=>({...x,[key]:value}));
+  645:  };
+  646: 
+  647:  const act=async(path,method,body,msg)=>{
+  648:   try{
+  649:    const result=await send(
+  650:     token,
+  651:     path,
+  652:     method,
+  653:     body
+  654:    );
+  655:    setSt({e:"",m:msg});
+  656:    return result;
+  657:   }catch(e){
+  658:    setSt({e:e.message,m:""});
+  659:    return null;
+  660:   }
+  661:  };
+  662: 
+  663:  const createCycle=async()=>{
+  664:   if(!cycleForm.cycle_code.trim()){
+  665:    setSt({e:"Cycle code is required.",m:""});
+  666:    return;
+  667:   }
+  668: 
+  669:   if(!cycleForm.program_start_date){
+  670:    setSt({e:"Programme start date is required.",m:""});
+  671:    return;
+  672:   }
+  673: 
+  674:   const payload={
+  675:    ...cycleForm,
+  676:    cycle_name:cycleForm.cycle_name||null,
+  677:    application_start_date:cycleForm.application_start_date||null,
+  678:    application_end_date:cycleForm.application_end_date||null,
+  679:    registration_start_date:cycleForm.registration_start_date||null,
+  680:    registration_end_date:cycleForm.registration_end_date||null,
+  681:    expected_completion_date:cycleForm.expected_completion_date||null
+  682:   };
+  683: 
+  684:   const result=await act(
+  685:    "/api/staff/academic-management/cycles",
+  686:    "POST",
+  687:    payload,
+  688:    "Academic cycle created."
+  689:   );
+  690: 
+  691:   if(!result)return;
+  692: 
+  693:   setCycleForm({
+  694:    cycle_code:"",
+  695:    cycle_name:"",
+  696:    application_start_date:"",
+  697:    application_end_date:"",
+  698:    registration_start_date:"",
+  699:    registration_end_date:"",
+  700:    program_start_date:"",
+  701:    expected_completion_date:"",
+  702:    cipc_required:false,
+  703:    status:"Draft"
+  704:   });
+  705: 
+  706:   cyc.refresh();
+  707:  };
+  708: 
+  709:  const openCycle=async(row)=>{
+  710:   setSelectedCycle(row);
+  711:   setCycleStatus(row.status||"Draft");
+  712: 
+  713:   try{
+  714:    const x=await API.request(
+  715:     "/api/staff/desktop-v5/cycle-courses"
+  716:       +q({cycle_code:row.cycle_code}),
+  717:     {},
+  718:     token
+  719:    );
+  720:    setCycleCourses(x.courses||[]);
+  721:    setSt({e:"",m:""});
+  722:   }catch(e){
+  723:    setSt({e:e.message,m:""});
+  724:   }
+  725:  };
+  726: 
+  727:  const saveCycleStatus=async()=>{
+  728:   if(!selectedCycle)return;
+  729: 
+  730:   const result=await act(
+  731:    `/api/staff/academic-management/cycles/${selectedCycle.cycle_code}/status`,
+  732:    "PATCH",
+  733:    {status:cycleStatus},
+  734:    `Cycle ${selectedCycle.cycle_code} status updated to ${cycleStatus}.`
+  735:   );
+  736: 
+  737:   if(!result)return;
+  738: 
+  739:   cyc.refresh();
+  740:   setSelectedCycle(x=>(
+  741:    x?{...x,status:cycleStatus}:x
+  742:   ));
+  743:  };
+  744: 
+  745:  const offeringMap=Object.fromEntries(
+  746:   cycleCourses.map(
+  747:    x=>[x.course_code,x]
+  748:   )
+  749:  );
+  750: 
+  751:  const offeringRows=courses.map(
+  752:   c=>({
+  753:    course_code:c.course_code,
+  754:    course_name:c.course_name,
+  755:    nqf_level:c.nqf_level,
+  756:    credits:c.credits,
+  757:    assessment_type:c.assessment_type,
+  758:    is_active:Boolean(
+  759:     offeringMap[c.course_code]?.is_active
+  760:    )
+  761:   })
+  762:  );
+  763: 
+  764:  const toggleOffering=async(row)=>{
+  765:   if(!selectedCycle)return;
+  766: 
+  767:   const result=await act(
+  768:    "/api/staff/desktop-v5/cycle-course-status",
+  769:    "POST",
+  770:    {
+  771:     cycle_code:selectedCycle.cycle_code,
+  772:     course_code:row.course_code,
+  773:     is_active:!row.is_active
+  774:    },
+  775:    `${row.course_code} offering updated.`
+  776:   );
+  777: 
+  778:   if(!result)return;
+  779: 
+  780:   await openCycle({
+  781:    ...selectedCycle,
+  782:    status:cycleStatus
+  783:   });
+  784:   cyc.refresh();
+  785:  };
+  786: 
+  787:  const createClass=async()=>{
+  788:   if(!classForm.class_code.trim()){
+  789:    setSt({e:"Class code is required.",m:""});
+  790:    return;
+  791:   }
+  792: 
+  793:   if(!classForm.cycle_code){
+  794:    setSt({e:"Select a cycle.",m:""});
+  795:    return;
+  796:   }
+  797: 
+  798:   if(!classForm.course_code){
+  799:    setSt({e:"Select a course.",m:""});
+  800:    return;
+  801:   }
+  802: 
+  803:   const result=await act(
+  804:    "/api/staff/academic-management/classes",
+  805:    "POST",
+  806:    {
+  807:     class_code:classForm.class_code,
+  808:     class_name:classForm.class_name||null,
+  809:     course_code:classForm.course_code,
+  810:     cycle_code:classForm.cycle_code,
+  811:     class_group:classForm.class_group||null,
+  812:     facilitator_code:null,
+  813:     assessor_code:null,
+  814:     status:classForm.status
+  815:    },
+  816:    "Class created."
+  817:   );
+  818: 
+  819:   if(!result)return;
+  820: 
+  821:   setClassForm({
+  822:    class_code:"",
+  823:    class_name:"",
+  824:    course_code:"",
+  825:    cycle_code:"",
+  826:    class_group:"",
+  827:    status:"Draft"
+  828:   });
+  829: 
+  830:   cls.refresh();
+  831:   cyc.refresh();
+  832:  };
+  833: 
+  834:  const openClass=async(row)=>{
+  835:   setSelectedClass(row);
+  836:   setClassEdit({
+  837:    class_name:row.class_name||"",
+  838:    class_group:row.class_group||"",
+  839:    status:row.status||"Draft"
+  840:   });
+  841:   setFacilitatorCode(
+  842:    row.facilitator_code||""
+  843:   );
+  844:   setAssessorCode(
+  845:    row.assessor_code||""
+  846:   );
+  847:   setModeratorCode(
+  848:    row.moderator_code||""
+  849:   );
+  850: 
+  851:   try{
+  852:    const[a,b]=await Promise.all([
+  853:     API.request(
+  854:      `/api/staff/academic-management/classes/${row.class_code}/learners`,
+  855:      {},
+  856:      token
+  857:     ),
+  858:     API.request(
+  859:      `/api/staff/academic-management/classes/${row.class_code}/eligible-learners`,
+  860:      {},
+  861:      token
+  862:     )
+  863:    ]);
+  864: 
+  865:    setClassLearners(
+  866:     a.learners||[]
+  867:    );
+  868:    setEligibleLearners(
+  869:     b.learners||b.eligible_learners||[]
+  870:    );
+  871:    setSt({e:"",m:""});
+  872:   }catch(e){
+  873:    setSt({e:e.message,m:""});
+  874:   }
+  875:  };
+  876: 
+  877:  const saveClassDetails=async()=>{
+  878:   if(!selectedClass)return;
+  879: 
+  880:   const result=await act(
+  881:    `/api/staff/academic-management/classes/${selectedClass.class_code}`,
+  882:    "PUT",
+  883:    {
+  884:     class_name:classEdit.class_name||null,
+  885:     course_code:selectedClass.course_code,
+  886:     cycle_code:selectedClass.cycle_code,
+  887:     class_group:classEdit.class_group||null,
+  888:     status:classEdit.status
+  889:    },
+  890:    "Class details updated."
+  891:   );
+  892: 
+  893:   if(!result)return;
+  894: 
+  895:   cls.refresh();
+  896:   setSelectedClass(x=>(
+  897:    x?{
+  898:     ...x,
+  899:     class_name:classEdit.class_name,
+  900:     class_group:classEdit.class_group,
+  901:     status:classEdit.status
+  902:    }:x
+  903:   ));
+  904:  };
+  905: 
+  906:  const saveStaffAssignment=async()=>{
+  907:   if(!selectedClass)return;
+  908: 
+  909:   const result=await act(
+  910:    `/api/staff/desktop-v5/classes/${selectedClass.class_code}/academic-staff`,
+  911:    "PUT",
+  912:    {
+  913:     facilitator_code:facilitatorCode||null,
+  914:     assessor_code:assessorCode||null,
+  915:     moderator_code:moderatorCode||null
+  916:    },
+  917:    "Class academic staff assignment updated."
+  918:   );
+  919: 
+  920:   if(!result)return;
+  921: 
+  922:   cls.refresh();
+  923:   await openClass({
+  924:    ...selectedClass,
+  925:    facilitator_code:facilitatorCode||null,
+  926:    assessor_code:assessorCode||null,
+  927:    moderator_code:moderatorCode||null
+  928:   });
+  929:  };
+  930: 
+  931:  const enrolLearner=async(row)=>{
+  932:   if(!selectedClass)return;
+  933: 
+  934:   const result=await act(
+  935:    `/api/staff/academic-management/classes/${selectedClass.class_code}/enrolments`,
+  936:    "POST",
+  937:    {registration_id:row.registration_id},
+  938:    `${row.student_number} enrolled in ${selectedClass.class_code}.`
+  939:   );
+  940: 
+  941:   if(!result)return;
+  942: 
+  943:   cls.refresh();
+  944:   await openClass(selectedClass);
+  945:  };
+  946: 
+  947:  const removeLearner=async(row)=>{
+  948:   if(!selectedClass)return;
+  949: 
+  950:   const ok=window.confirm(
+  951:    `Remove ${row.student_number} from ${selectedClass.class_code}?`
+  952:   );
+  953: 
+  954:   if(!ok)return;
+  955: 
+  956:   const result=await act(
+  957:    `/api/staff/academic-management/classes/${selectedClass.class_code}/enrolments/${row.registration_id}/remove`,
+  958:    "PATCH",
+  959:    undefined,
+  960:    `${row.student_number} removed from ${selectedClass.class_code}.`
+  961:   );
+  962: 
+  963:   if(!result)return;
+  964: 
+  965:   cls.refresh();
+  966:   await openClass(selectedClass);
+  967:  };
+  968: 
+  969:  return <><div className="page-title"><div><span className="eyebrow">Academic Administration</span><h1>Academic Management</h1><p>Create cycles and classes, control cycle status and course offerings, assign Facilitators/Assessors/Moderators and manage learner class enrolment.</p></div></div><Alert e={st.e||cyc.e||cou.e||cls.e||staff.e} m={st.m}/>
+  970: 
+  971:  <Panel title="Create Academic Cycle" text="Create the intake/programme cycle first. New cycles normally begin in Draft status.">
+  972:   <div className="form-grid">
+  973:    <label><span>Cycle Code *</span><input value={cycleForm.cycle_code} onChange={e=>changeCycle("cycle_code",e.target.value)} placeholder="e.g. 2027-INTAKE-01"/></label>
+  974:    <label><span>Cycle Name</span><input value={cycleForm.cycle_name} onChange={e=>changeCycle("cycle_name",e.target.value)} placeholder="e.g. January 2027 Intake"/></label>
+  975:    <label><span>Programme Start Date *</span><input type="date" value={cycleForm.program_start_date} onChange={e=>changeCycle("program_start_date",e.target.value)}/></label>
+  976:    <label><span>Expected Completion Date</span><input type="date" value={cycleForm.expected_completion_date} onChange={e=>changeCycle("expected_completion_date",e.target.value)}/></label>
+  977:    <label><span>Application Start</span><input type="date" value={cycleForm.application_start_date} onChange={e=>changeCycle("application_start_date",e.target.value)}/></label>
+  978:    <label><span>Application End</span><input type="date" value={cycleForm.application_end_date} onChange={e=>changeCycle("application_end_date",e.target.value)}/></label>
+  979:    <label><span>Registration Start</span><input type="date" value={cycleForm.registration_start_date} onChange={e=>changeCycle("registration_start_date",e.target.value)}/></label>
+  980:    <label><span>Registration End</span><input type="date" value={cycleForm.registration_end_date} onChange={e=>changeCycle("registration_end_date",e.target.value)}/></label>
+  981:    <label><span>Status</span><select value={cycleForm.status} onChange={e=>changeCycle("status",e.target.value)}>{["Draft","Active","Closed","Archived"].map(x=><option key={x}>{x}</option>)}</select></label>
+  982:    <label><span>CIPC Required</span><select value={cycleForm.cipc_required?"Yes":"No"} onChange={e=>changeCycle("cipc_required",e.target.value==="Yes")}><option>No</option><option>Yes</option></select></label>
+  983:   </div>
+  984:   <button className="button gold" onClick={createCycle}>Create Cycle</button>
+  985:  </Panel>
+  986: 
+  987:  <Panel title="Academic Cycles" text="The cycle status is shown directly in this table. Select Manage to change status and configure course offerings.">
+  988:   <Tbl rows={cycles} cols={["cycle_code","cycle_name","status","program_start_date","expected_completion_date","active_course_count","class_count"]} act={r=><Button onClick={()=>openCycle(r)}>Manage Cycle</Button>}/>
+  989:  </Panel>
+  990: 
+  991:  {selectedCycle&&<><Panel title={`Manage Cycle - ${selectedCycle.cycle_code}`} text="Change the lifecycle status for this academic cycle.">
+  992:   <div className="form-grid">
+  993:    <label><span>Cycle</span><input value={selectedCycle.cycle_code} disabled/></label>
+  994:    <label><span>Current / New Status</span><select value={cycleStatus} onChange={e=>setCycleStatus(e.target.value)}>{["Draft","Active","Closed","Archived"].map(x=><option key={x}>{x}</option>)}</select></label>
+  995:   </div>
+  996:   <button className="button gold" onClick={saveCycleStatus}>Save Cycle Status</button>
+  997:  </Panel>
+  998: 
+  999:  <Panel title={`Course Offerings - ${selectedCycle.cycle_code}`} text="A course must be active for the cycle before a class can be created for it.">
+ 1000:   <Tbl rows={offeringRows} cols={["course_code","course_name","nqf_level","credits","assessment_type","is_active"]} act={r=><Button onClick={()=>toggleOffering(r)}>{r.is_active?"Deactivate":"Activate"}</Button>}/>
+ 1001:  </Panel></>}
+ 1002: 
+ 1003:  <Panel title="Create Class" text="Create a class after activating the course for the selected cycle. Staff and learners can be assigned after creation.">
+ 1004:   <div className="form-grid">
+ 1005:    <label><span>Class Code *</span><input value={classForm.class_code} onChange={e=>changeClass("class_code",e.target.value)} placeholder="e.g. NVC-2027-A"/></label>
+ 1006:    <label><span>Class Name</span><input value={classForm.class_name} onChange={e=>changeClass("class_name",e.target.value)} placeholder="e.g. New Venture Creation Group A"/></label>
+ 1007:    <label><span>Cycle *</span><select value={classForm.cycle_code} onChange={e=>changeClass("cycle_code",e.target.value)}><option value="">Select cycle</option>{cycles.map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code} - {x.cycle_name||x.status}</option>)}</select></label>
+ 1008:    <label><span>Course *</span><select value={classForm.course_code} onChange={e=>changeClass("course_code",e.target.value)}><option value="">Select course</option>{courses.map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} - {x.course_name}</option>)}</select></label>
+ 1009:    <label><span>Class Group</span><input value={classForm.class_group} onChange={e=>changeClass("class_group",e.target.value)} placeholder="e.g. A"/></label>
+ 1010:    <label><span>Status</span><select value={classForm.status} onChange={e=>changeClass("status",e.target.value)}>{["Draft","Active","Closed","Archived"].map(x=><option key={x}>{x}</option>)}</select></label>
+ 1011:   </div>
+ 1012:   <button className="button gold" onClick={createClass}>Create Class</button>
+ 1013:  </Panel>
+ 1014: 
+ 1015:  <Panel title="Classes" text="Class status, assigned Facilitator/Assessor and learner count are visible here.">
+ 1016:   <Tbl rows={classes} cols={["class_code","class_name","course_code","cycle_code","status","facilitator_name","assessor_name","moderator_name","active_learner_count"]} act={r=><Button onClick={()=>openClass(r)}>Manage Class</Button>}/>
+ 1017:  </Panel>
+ 1018: 
+ 1019:  {selectedClass&&<><Panel title={`Manage Class - ${selectedClass.class_code}`} text="Update class details and status.">
+ 1020:   <div className="form-grid">
+ 1021:    <label><span>Class Code</span><input value={selectedClass.class_code} disabled/></label>
+ 1022:    <label><span>Course</span><input value={selectedClass.course_code} disabled/></label>
+ 1023:    <label><span>Cycle</span><input value={selectedClass.cycle_code} disabled/></label>
+ 1024:    <label><span>Class Name</span><input value={classEdit.class_name} onChange={e=>setClassEdit(x=>({...x,class_name:e.target.value}))}/></label>
+ 1025:    <label><span>Class Group</span><input value={classEdit.class_group} onChange={e=>setClassEdit(x=>({...x,class_group:e.target.value}))}/></label>
+ 1026:    <label><span>Class Status</span><select value={classEdit.status} onChange={e=>setClassEdit(x=>({...x,status:e.target.value}))}>{["Draft","Active","Closed","Archived"].map(x=><option key={x}>{x}</option>)}</select></label>
+ 1027:   </div>
+ 1028:   <button className="button gold" onClick={saveClassDetails}>Save Class Details</button>
+ 1029:  </Panel>
+ 1030: 
+ 1031:  <Panel title={`Assign Academic Staff - ${selectedClass.class_code}`} text="Choose an active Facilitator, Assessor and Moderator. The Assessor and Moderator must be different staff members.">
+ 1032:   <div className="form-grid three">
+ 1033:    <label><span>Facilitator</span><select value={facilitatorCode} onChange={e=>setFacilitatorCode(e.target.value)}><option value="">Unassigned</option>{facilitators.map(x=><option key={x.staff_code} value={x.staff_code}>{x.staff_code} - {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")}</option>)}</select></label>
+ 1034:    <label><span>Assessor</span><select value={assessorCode} onChange={e=>setAssessorCode(e.target.value)}><option value="">Unassigned</option>{assessors.map(x=><option key={x.staff_code} value={x.staff_code}>{x.staff_code} - {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")}</option>)}</select></label>
+ 1035:    <label><span>Moderator</span><select value={moderatorCode} onChange={e=>setModeratorCode(e.target.value)}><option value="">Unassigned</option>{moderators.map(x=><option key={x.staff_code} value={x.staff_code}>{x.staff_code} - {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")}</option>)}</select></label>
+ 1036:   </div>
+ 1037:   {!moderators.length&&<div className="alert error" style={{marginTop:"12px"}}>No active Moderator account exists. Create a staff member with the MODERATOR role under System Management first.</div>}
+ 1038:   <button className="button gold" onClick={saveStaffAssignment}>Save Staff Assignment</button>
+ 1039:  </Panel>
+ 1040: 
+ 1041:  <div className="two-col">
+ 1042:   <Panel title={`Learners in ${selectedClass.class_code}`} text="These learners are currently enrolled in this class.">
+ 1043:    <Tbl rows={classLearners} cols={["student_number","first_name","last_name","registration_status","class_enrolment_status","enrolled_at"]} act={r=><Button danger onClick={()=>removeLearner(r)}>Remove</Button>}/>
+ 1044:   </Panel>
+ 1045:   <Panel title="Eligible Learners" text="Only learners registered for this course/cycle and not already actively enrolled in another class are listed.">
+ 1046:    <Tbl rows={eligibleLearners} cols={["student_number","first_name","last_name","registration_status","course_code","cycle"]} act={r=><button className="button gold" onClick={()=>enrolLearner(r)}>Add to Class</button>}/>
+ 1047:   </Panel>
+ 1048:  </div></>}
+ 1049: 
+ 1050:  <Panel title="Academic Staff Options" text="Active staff accounts with Facilitator, Assessor and/or Moderator roles.">
+ 1051:   <Tbl rows={staffRows} cols={["staff_code","first_name","last_name","primary_role","can_facilitate","can_assess","can_moderate"]}/>
+ 1052:  </Panel></>
+ 1053: }
+ 1054: 
+ 1055: 
+ 1056: export function Timetable({token}){
+ 1057:  const list=useGet("/api/staff/admin/timetable?limit=200",token),opts=useGet("/api/staff/admin/timetable/options",token);const[f,setF]=useState({id:"",class_code:"",module_code:"",session_title:"",session_date:"",start_time:"",end_time:"",delivery_mode:"Physical",venue:"",meeting_link:"",notes:"",status:"Draft"}),[st,setSt]=useState({e:"",m:""});const classes=opts.data?.classes||[],mods=(opts.data?.modules||[]).filter(m=>!f.class_code||m.course_code===classes.find(c=>c.class_code===f.class_code)?.course_code);
+ 1058:  const save=async e=>{e.preventDefault();const body={class_code:f.class_code,module_code:f.module_code||null,session_title:f.session_title||null,session_date:f.session_date,start_time:f.start_time,end_time:f.end_time,delivery_mode:f.delivery_mode,venue:f.venue||null,meeting_link:f.meeting_link||null,notes:f.notes||null,...(!f.id?{status:f.status}:{})};try{await send(token,f.id?`/api/staff/admin/timetable/sessions/${f.id}`:"/api/staff/admin/timetable/sessions",f.id?"PUT":"POST",body);setSt({e:"",m:f.id?"Session updated.":"Session created."});setF({id:"",class_code:"",module_code:"",session_title:"",session_date:"",start_time:"",end_time:"",delivery_mode:"Physical",venue:"",meeting_link:"",notes:"",status:"Draft"});list.refresh()}catch(e){setSt({e:e.message,m:""})}};
+ 1059:  const status=async(r,s)=>{try{await send(token,`/api/staff/admin/timetable/sessions/${r.timetable_session_id}/status`+q({new_status:s}),"PATCH");list.refresh()}catch(e){setSt({e:e.message,m:""})}};
+ 1060:  const edit=r=>setF({id:r.timetable_session_id,class_code:r.class_code||"",module_code:r.module_code||"",session_title:r.session_title||"",session_date:r.session_date||"",start_time:String(r.start_time||"").slice(0,5),end_time:String(r.end_time||"").slice(0,5),delivery_mode:r.delivery_mode||"Physical",venue:r.venue||"",meeting_link:r.meeting_link||"",notes:r.notes||"",status:r.status||"Draft"});
+ 1061:  return <><div className="page-title"><div><span className="eyebrow">Academic Calendar</span><h1>Timetable</h1><p>Create, edit, publish, cancel and delete Draft sessions.</p></div></div><Alert {...st}/><form onSubmit={save}><Panel title={f.id?"Edit Session":"Create Timetable Session"}><div className="form-grid three"><label><span>Class</span><select required value={f.class_code} onChange={e=>setF({...f,class_code:e.target.value,module_code:""})}><option value="">Select class</option>{classes.map(x=><option value={x.class_code} key={x.class_code}>{x.class_code} â€” {x.class_name}</option>)}</select></label><label><span>Module</span><select value={f.module_code} onChange={e=>setF({...f,module_code:e.target.value})}><option value="">General / No Module</option>{mods.map(x=><option key={x.module_code} value={x.module_code}>{x.module_code} â€” {x.module_name}</option>)}</select></label><label><span>Title</span><input value={f.session_title} onChange={e=>setF({...f,session_title:e.target.value})}/></label><label><span>Date</span><input required type="date" value={f.session_date} onChange={e=>setF({...f,session_date:e.target.value})}/></label><label><span>Start</span><input required type="time" value={f.start_time} onChange={e=>setF({...f,start_time:e.target.value})}/></label><label><span>End</span><input required type="time" value={f.end_time} onChange={e=>setF({...f,end_time:e.target.value})}/></label><label><span>Delivery</span><select value={f.delivery_mode} onChange={e=>setF({...f,delivery_mode:e.target.value})}>{["Physical","Online","Blended"].map(x=><option key={x}>{x}</option>)}</select></label><label><span>Venue</span><input value={f.venue} onChange={e=>setF({...f,venue:e.target.value})}/></label><label><span>Meeting Link</span><input value={f.meeting_link} onChange={e=>setF({...f,meeting_link:e.target.value})}/></label></div><label><span>Notes</span><textarea value={f.notes} onChange={e=>setF({...f,notes:e.target.value})}/></label><button className="button gold">{f.id?"Save Session":"Create Session"}</button>{f.id&&<Button onClick={()=>setF({...f,id:""})}>Cancel Edit</Button>}</Panel></form><Panel title="Sessions"><Tbl rows={list.data?.sessions||[]} cols={["session_date","start_time","class_code","module_code","session_title","delivery_mode","status"]} act={r=><div className="button-row"><Button onClick={()=>edit(r)}>Edit</Button>{r.status!=="Published"&&<button className="button gold" onClick={()=>status(r,"Published")}>Publish</button>}{r.status!=="Cancelled"&&<Button onClick={()=>status(r,"Cancelled")}>Cancel</Button>}{r.status==="Draft"&&<Button danger onClick={async()=>{if(confirm("Delete this Draft session?")){await send(token,`/api/staff/admin/timetable/sessions/${r.timetable_session_id}`,"DELETE");list.refresh()}}}>Delete</Button>}</div>}/></Panel></>
+ 1062: }
+ 1063: 
+ 1064: export function Completion({token}){
+ 1065:  const list=useGet("/api/staff/admin/completion?limit=200",token),[sel,setSel]=useState(""),[detail,setDetail]=useState(null),[st,setSt]=useState({e:"",m:""});
+ 1066:  const open=async n=>{setSel(n);try{const x=await API.request(`/api/staff/admin/completion-management/${n}`,{},token);setDetail(x.data||x);setSt({e:"",m:""})}catch(e){setSt({e:e.message,m:""})}};
+ 1067:  const upd=async kind=>{let body;if(kind==="certification"){const s=prompt("Certificate status:","Pending");if(!s)return;body={certificate_status:s,certificate_number:prompt("Certificate number (optional):","")||null,certificate_date:prompt("Certificate date YYYY-MM-DD (optional):","")||null,certificate_received_date:prompt("Certificate received date YYYY-MM-DD (optional):","")||null,certificate_issued_date:prompt("Certificate issued date YYYY-MM-DD (optional):","")||null,notes:prompt("Notes (optional):","")||null}}else{const s=prompt("Graduation status:","Pending");if(!s)return;body={graduation_status:s,graduation_date:prompt("Graduation date YYYY-MM-DD (optional):","")||null,notes:prompt("Notes (optional):","")||null}}try{await send(token,`/api/staff/admin/completion-management/${sel}/${kind}`,"PATCH",body);setSt({e:"",m:`${h(kind)} updated.`});open(sel);list.refresh()}catch(e){setSt({e:e.message,m:""})}};
+ 1068:  const complete=Boolean(detail?.final_completion_confirmed);
+ 1069:  return <><div className="page-title"><div><span className="eyebrow">Completion</span><h1>Completion, Certification & Graduation</h1><p>Programme completion is calculated automatically from published assessment results. Admin tracks certification and graduation after academic completion.</p></div></div><Alert {...st}/><Panel title="Completion Dashboard" text="FISA-only learners complete when a published FISA is competent. FISA + EISA learners are not finally complete until the external EISA outcome is captured."><Tbl rows={list.data?.records||[]} cols={["student_number","course_code","course_name","assessment_type","fisa_mark","fisa_result","completion_state"]} act={r=><Button onClick={()=>open(r.student_number)}>Manage</Button>}/></Panel>{sel&&<><Panel title={`Academic Completion - ${sel}`} text="This status is system-calculated and cannot be manually overridden." actions={<span className="badge">{complete?"COMPLETED":"PENDING"}</span>}><Obj data={detail||{}}/></Panel><Panel title="Certification & Graduation" text="These are administrative tracking steps after the academic assessment outcome."><div className="button-row"><Button onClick={()=>upd("certification")}>Update Certification</Button><Button onClick={()=>upd("graduation")}>Update Graduation</Button></div></Panel></>}</>
+ 1070: }
+ 1071: 
+ 1072: export function Eisa({token}){
+ 1073:  const list=useGet("/api/staff/admin/eisa/learners?limit=200",token),[st,setSt]=useState({e:"",m:""});const tog=async r=>{try{await send(token,`/api/staff/admin/eisa/learners/${r.student_number}/eligibility`+q({eligible:!Boolean(r.eisa_eligible)}),"PATCH");setSt({e:"",m:"EISA eligibility updated."});list.refresh()}catch(e){setSt({e:e.message,m:""})}};return <><div className="page-title"><div><span className="eyebrow">EISA</span><h1>EISA Learner Eligibility</h1><p>Manage readiness for programmes that require the external EISA exit assessment.</p></div></div><Alert {...st}/><Panel title="EISA Learners"><Tbl rows={list.data?.learners||[]} act={r=><Button onClick={()=>tog(r)}>{r.eisa_eligible?"Mark Not Eligible":"Mark Eligible"}</Button>}/></Panel></>
+ 1074: }
+ 1075: 
+ 1076: export function Finance({token}){
+
+--- lines 1132-1307 ---
+ 1132:     :"",
+ 1133:    m:""
+ 1134:   });
+ 1135:  };
+ 1136: 
+ 1137:  const dashboard=(
+ 1138:   dash.data?.data
+ 1139:   ||dash.data
+ 1140:   ||{}
+ 1141:  );
+ 1142: 
+ 1143:  const recent=(
+ 1144:   dashboard.recent_payments
+ 1145:   ||[]
+ 1146:  );
+ 1147: 
+ 1148:  const summary=Object.fromEntries(
+ 1149:   Object.entries(dashboard).filter(
+ 1150:    ([key])=>key!=="recent_payments"
+ 1151:   )
+ 1152:  );
+ 1153: 
+ 1154:  return <><div className="page-title"><div><span className="eyebrow">Finance</span><h1>Finance Oversight</h1><p>Admin has visibility only; transactions remain CFO/Financial Officer functions.</p></div></div><Alert {...st}/><Panel title="Finance Dashboard"><Obj data={summary}/></Panel><Panel title="Recent Payments"><Tbl rows={recent}/></Panel><Panel title="Find Student Account"><div className="toolbar-grid"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Student number or name"/><button className="button gold" onClick={find}>Search</button></div><Tbl rows={students} act={r=><Button onClick={()=>open(r.student_number)}>Open</Button>}/></Panel>{sel&&<><Panel title={`Finance - ${sel}`} actions={detail?<button className="button gold" onClick={()=>API.downloadFile(`/api/staff/finance/documents/statement/${sel}`,token,`${sel}_Statement.pdf`)}>Statement PDF</button>:null}><Obj data={detail||{}}/></Panel><div className="two-col"><Panel title="Invoices"><Tbl rows={inv} act={r=>r.invoice_number?<Button onClick={()=>API.downloadFile(`/api/staff/finance/documents/invoice/${r.invoice_number}`,token,`${r.invoice_number}.pdf`)}>PDF</Button>:null}/></Panel><Panel title="Receipts"><Tbl rows={rec} act={r=>r.receipt_number?<Button onClick={()=>API.downloadFile(`/api/staff/finance/documents/receipt/${r.receipt_number}`,token,`${r.receipt_number}.pdf`)}>PDF</Button>:null}/></Panel></div><Panel title="Payments"><Tbl rows={pay}/></Panel></>}</>
+ 1155: }
+ 1156: 
+ 1157: export function Communications({token}){
+ 1158:  const sm=useGet("/api/staff/communications/staff-messages",token);
+ 1159:  const stm=useGet("/api/staff/communications/student-messages",token);
+ 1160:  const ann=useGet("/api/staff/communications/announcements",token);
+ 1161:  const dir=useGet("/api/staff/communications/staff-directory",token);
+ 1162:  const courses=useGet("/api/staff/academic-management/courses",token);
+ 1163:  const cycles=useGet("/api/staff/academic-management/cycles",token);
+ 1164:  const classes=useGet("/api/staff/academic-management/classes",token);
+ 1165:  const[st,setSt]=useState({e:"",m:""});
+ 1166:  const[staffForm,setStaffForm]=useState({recipient_staff_code:"",subject:"",category:"General",message_body:""});
+ 1167:  const[announcement,setAnnouncement]=useState({title:"",message:"",announcement_type:"General",priority:"Normal",audience_type:"AllStudents",course_code:"",cycle_code:"",class_id:"",student_number:"",expires_at:""});
+ 1168:  const staffRows=dir.data?.staff||dir.data?.directory||[];
+ 1169:  const courseRows=courses.data?.courses||[];
+ 1170:  const cycleRows=cycles.data?.cycles||[];
+ 1171:  const classRows=classes.data?.classes||[];
+ 1172: 
+ 1173:  const sendStaffMessage=async()=>{
+ 1174:   if(!staffForm.recipient_staff_code){setSt({e:"Select a staff member.",m:""});return}
+ 1175:   if(!staffForm.subject.trim()){setSt({e:"Enter a message subject.",m:""});return}
+ 1176:   if(!staffForm.message_body.trim()){setSt({e:"Enter the staff message.",m:""});return}
+ 1177:   try{
+ 1178:    await send(token,"/api/staff/communications/staff-messages","POST",{recipient_staff_code:staffForm.recipient_staff_code,subject:staffForm.subject.trim(),category:staffForm.category.trim()||"General",message_body:staffForm.message_body.trim()});
+ 1179:    setStaffForm({recipient_staff_code:"",subject:"",category:"General",message_body:""});
+ 1180:    setSt({e:"",m:"Staff message sent."});
+ 1181:    sm.refresh();
+ 1182:   }catch(e){setSt({e:e.message,m:""})}
+ 1183:  };
+ 1184: 
+ 1185:  const createAnnouncement=async()=>{
+ 1186:   if(!announcement.title.trim()){setSt({e:"Enter an announcement title.",m:""});return}
+ 1187:   if(!announcement.message.trim()){setSt({e:"Enter the announcement message.",m:""});return}
+ 1188:   const payload={title:announcement.title.trim(),message:announcement.message.trim(),announcement_type:announcement.announcement_type,priority:announcement.priority,audience_type:announcement.audience_type,course_code:null,cycle_code:null,class_id:null,student_number:null,expires_at:announcement.expires_at?new Date(announcement.expires_at).toISOString():null};
+ 1189:   if(announcement.audience_type==="Course"){if(!announcement.course_code){setSt({e:"Select a course for this announcement.",m:""});return}payload.course_code=announcement.course_code}
+ 1190:   if(announcement.audience_type==="Cycle"){if(!announcement.cycle_code){setSt({e:"Select a cycle for this announcement.",m:""});return}payload.cycle_code=announcement.cycle_code}
+ 1191:   if(announcement.audience_type==="Class"){if(!announcement.class_id){setSt({e:"Select a class for this announcement.",m:""});return}payload.class_id=announcement.class_id}
+ 1192:   if(announcement.audience_type==="IndividualStudent"){if(!announcement.student_number.trim()){setSt({e:"Enter the student number for this announcement.",m:""});return}payload.student_number=announcement.student_number.trim()}
+ 1193:   try{
+ 1194:    await send(token,"/api/staff/communications/announcements","POST",payload);
+ 1195:    setAnnouncement({title:"",message:"",announcement_type:"General",priority:"Normal",audience_type:"AllStudents",course_code:"",cycle_code:"",class_id:"",student_number:"",expires_at:""});
+ 1196:    setSt({e:"",m:"Announcement saved as Draft."});
+ 1197:    ann.refresh();
+ 1198:   }catch(e){setSt({e:e.message,m:""})}
+ 1199:  };
+ 1200: 
+ 1201:  const reply=async r=>{const id=r.thread_id||r.id,body=prompt("Reply to student:","");if(!body)return;try{await send(token,`/api/staff/communications/student-messages/${id}/reply`,"POST",{message_body:body});stm.refresh()}catch(e){setSt({e:e.message,m:""})}};
+ 1202:  const publish=async r=>{const id=r.announcement_id||r.id;try{await send(token,`/api/staff/communications/announcements/${id}/publish`,"POST");setSt({e:"",m:"Announcement published."});ann.refresh()}catch(e){setSt({e:e.message,m:""})}};
+ 1203: 
+ 1204:  return <><div className="page-title"><div><span className="eyebrow">Communications</span><h1>Messages & Announcements</h1><p>Send staff messages and create targeted learner announcements using full forms.</p></div></div><Alert {...st}/>
+ 1205:  <div className="two-col">
+ 1206:   <Panel title="Send Staff Message" text="Choose an active staff account, then send the message."><div className="form-grid"><label><span>Staff Member</span><select value={staffForm.recipient_staff_code} onChange={e=>setStaffForm(x=>({...x,recipient_staff_code:e.target.value}))}><option value="">Select staff member</option>{staffRows.map(x=><option key={x.staff_code} value={x.staff_code}>{x.staff_code} - {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")} - {x.role_code}</option>)}</select></label><label><span>Category</span><input value={staffForm.category} onChange={e=>setStaffForm(x=>({...x,category:e.target.value}))}/></label><label><span>Subject</span><input value={staffForm.subject} onChange={e=>setStaffForm(x=>({...x,subject:e.target.value}))}/></label></div><label><span>Message</span><textarea rows="6" value={staffForm.message_body} onChange={e=>setStaffForm(x=>({...x,message_body:e.target.value}))}/></label><button className="button gold" onClick={sendStaffMessage}>Send Staff Message</button></Panel>
+ 1207:   <Panel title="Create Announcement" text="Create as Draft, then publish it from the Announcements table after review."><div className="form-grid"><label><span>Title</span><input value={announcement.title} onChange={e=>setAnnouncement(x=>({...x,title:e.target.value}))}/></label><label><span>Type</span><select value={announcement.announcement_type} onChange={e=>setAnnouncement(x=>({...x,announcement_type:e.target.value}))}>{["General","Academic","Assessment","Timetable","Finance","Documents","Emergency"].map(x=><option key={x}>{x}</option>)}</select></label><label><span>Priority</span><select value={announcement.priority} onChange={e=>setAnnouncement(x=>({...x,priority:e.target.value}))}>{["Normal","Important","Urgent"].map(x=><option key={x}>{x}</option>)}</select></label><label><span>Audience</span><select value={announcement.audience_type} onChange={e=>setAnnouncement(x=>({...x,audience_type:e.target.value,course_code:"",cycle_code:"",class_id:"",student_number:""}))}>{["AllStudents","Course","Cycle","Class","IndividualStudent"].map(x=><option key={x} value={x}>{x}</option>)}</select></label>{announcement.audience_type==="Course"&&<label><span>Course</span><select value={announcement.course_code} onChange={e=>setAnnouncement(x=>({...x,course_code:e.target.value}))}><option value="">Select course</option>{courseRows.map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} - {x.course_name}</option>)}</select></label>}{announcement.audience_type==="Cycle"&&<label><span>Cycle</span><select value={announcement.cycle_code} onChange={e=>setAnnouncement(x=>({...x,cycle_code:e.target.value}))}><option value="">Select cycle</option>{cycleRows.map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code} - {x.cycle_name||x.status}</option>)}</select></label>}{announcement.audience_type==="Class"&&<label><span>Class</span><select value={announcement.class_id} onChange={e=>setAnnouncement(x=>({...x,class_id:e.target.value}))}><option value="">Select class</option>{classRows.map(x=><option key={x.id} value={x.id}>{x.class_code} - {x.class_name||x.course_code}</option>)}</select></label>}{announcement.audience_type==="IndividualStudent"&&<label><span>Student Number</span><input value={announcement.student_number} onChange={e=>setAnnouncement(x=>({...x,student_number:e.target.value}))} placeholder="e.g. 20260010"/></label>}<label><span>Expires At (optional)</span><input type="datetime-local" value={announcement.expires_at} onChange={e=>setAnnouncement(x=>({...x,expires_at:e.target.value}))}/></label></div><label><span>Announcement</span><textarea rows="6" value={announcement.message} onChange={e=>setAnnouncement(x=>({...x,message:e.target.value}))}/></label><button className="button gold" onClick={createAnnouncement}>Make Announcement</button></Panel>
+ 1208:  </div>
+ 1209:  <Panel title="Staff Directory"><Tbl rows={staffRows}/></Panel><Panel title="Student Messages"><Tbl rows={stm.data?.messages||stm.data?.threads||[]} act={r=><div className="button-row"><Button onClick={()=>reply(r)}>Reply</Button><Button onClick={async()=>{try{await send(token,`/api/staff/communications/student-messages/${r.thread_id||r.id}/resolve`,"PATCH");stm.refresh()}catch(e){setSt({e:e.message,m:""})}}}>Resolve</Button></div>}/></Panel><Panel title="Staff Messages"><Tbl rows={sm.data?.messages||sm.data?.threads||[]}/></Panel><Panel title="Announcements"><Tbl rows={ann.data?.announcements||[]} act={r=>String(r.status||"").toLowerCase()!=="published"?<button className="button gold" onClick={()=>publish(r)}>Publish</button>:null}/></Panel></>
+ 1210: }
+ 1211: 
+ 1212: 
+ 1213: export function Support({token}){
+ 1214:  const[path,setPath]=useState("/api/staff/student-support/tickets");
+ 1215:  const list=useGet(path,token);
+ 1216: 
+ 1217:  const[selected,setSelected]=useState(null);
+ 1218:  const[detail,setDetail]=useState(null);
+ 1219:  const[replyText,setReplyText]=useState("");
+ 1220:  const[newStatus,setNewStatus]=useState("Open");
+ 1221:  const[filterStatus,setFilterStatus]=useState("");
+ 1222:  const[st,setSt]=useState({e:"",m:""});
+ 1223: 
+ 1224:  const tickets=list.data?.tickets||[];
+ 1225:  const ticket=detail?.ticket||selected||null;
+ 1226:  const messages=detail?.messages||[];
+ 1227: 
+ 1228:  const openTicket=async row=>{
+ 1229:   const id=row.ticket_id||row.id;
+ 1230: 
+ 1231:   if(!id){
+ 1232:    setSt({
+ 1233:     e:"This ticket does not have a valid ticket ID.",
+ 1234:     m:""
+ 1235:    });
+ 1236:    return;
+ 1237:   }
+ 1238: 
+ 1239:   try{
+ 1240:    const x=await API.request(
+ 1241:     `/api/staff/student-support/tickets/${id}`,
+ 1242:     {},
+ 1243:     token
+ 1244:    );
+ 1245: 
+ 1246:    const data=x.data||x;
+ 1247: 
+ 1248:    setSelected(
+ 1249:     data.ticket||row
+ 1250:    );
+ 1251: 
+ 1252:    setDetail(
+ 1253:     data
+ 1254:    );
+ 1255: 
+ 1256:    setNewStatus(
+ 1257:     data.ticket?.status
+ 1258:     ||row.status
+ 1259:     ||"Open"
+ 1260:    );
+ 1261: 
+ 1262:    setReplyText("");
+ 1263: 
+ 1264:    setSt({
+ 1265:     e:"",
+ 1266:     m:""
+ 1267:    });
+ 1268:   }catch(e){
+ 1269:    setSt({
+ 1270:     e:e.message,
+ 1271:     m:""
+ 1272:    });
+ 1273:   }
+ 1274:  };
+ 1275: 
+ 1276:  const reloadTicket=async()=>{
+ 1277:   const id=(
+ 1278:    ticket?.ticket_id
+ 1279:    ||ticket?.id
+ 1280:   );
+ 1281: 
+ 1282:   if(!id)return;
+ 1283: 
+ 1284:   try{
+ 1285:    const x=await API.request(
+ 1286:     `/api/staff/student-support/tickets/${id}`,
+ 1287:     {},
+ 1288:     token
+ 1289:    );
+ 1290: 
+ 1291:    const data=x.data||x;
+ 1292: 
+ 1293:    setDetail(
+ 1294:     data
+ 1295:    );
+ 1296: 
+ 1297:    setSelected(
+ 1298:     data.ticket||ticket
+ 1299:    );
+ 1300: 
+ 1301:    setNewStatus(
+ 1302:     data.ticket?.status
+ 1303:     ||newStatus
+ 1304:    );
+ 1305:   }catch(e){
+ 1306:    setSt({
+ 1307:     e:e.message,
+
+
+========================================================================================
+4. ADMIN V3 - BULK ACCEPT FLOW
+========================================================================================
+
+FILE: frontends\staff-desktop\src\AdminV3.jsx
+
+--- lines 308-558 ---
+  308:     ?current.filter(x=>x!==n)
+  309:     :[...current,n]
+  310:   );
+  311:  };
+  312: 
+  313:  const toggleAll=()=>{
+  314:   const visible=applications.map(
+  315:    x=>x.student_number
+  316:   );
+  317: 
+  318:   const allSelected=(
+  319:    visible.length>0
+  320:    &&visible.every(
+  321:     n=>selected.includes(n)
+  322:    )
+  323:   );
+  324: 
+  325:   if(allSelected){
+  326:    setSelected(current=>
+  327:     current.filter(
+  328:      n=>!visible.includes(n)
+  329:     )
+  330:    );
+  331:   }else{
+  332:    setSelected(current=>
+  333:     Array.from(
+  334:      new Set([
+  335:       ...current,
+  336:       ...visible
+  337:      ])
+  338:     )
+  339:    );
+  340:   }
+  341:  };
+  342: 
+  343:  const bulkAccept=async()=>{
+  344:   if(!selected.length){
+  345:    setSt({
+  346:     e:"Select at least one application.",
+  347:     m:""
+  348:    });
+  349:    return;
+  350:   }
+  351: 
+  352:   if(!window.confirm(
+  353:    `Accept and register ${selected.length} selected application(s)? Required documents will be enforced.`
+  354:   )){
+  355:    return;
+  356:   }
+  357: 
+  358:   const cycle=prompt(
+  359:    "Shared cycle code (optional - leave blank to use each application's configured/default cycle):",
+  360:    ""
+  361:   );
+  362: 
+  363:   if(cycle===null)return;
+  364: 
+  365:   const start=prompt(
+  366:    "Shared programme start date YYYY-MM-DD (optional):",
+  367:    ""
+  368:   );
+  369: 
+  370:   if(start===null)return;
+  371: 
+  372:   const end=prompt(
+  373:    "Shared expected completion date YYYY-MM-DD (optional):",
+  374:    ""
+  375:   );
+  376: 
+  377:   if(end===null)return;
+  378: 
+  379:   try{
+  380:    const result=await send(
+  381:     token,
+  382:     "/api/staff/admissions/bulk/accept",
+  383:     "POST",
+  384:     {
+  385:      student_numbers:selected,
+  386:      funding_type:null,
+  387:      cycle_code:cycle||null,
+  388:      program_start_date:start||null,
+  389:      expected_completion_date:end||null,
+  390:      enforce_documents:true
+  391:     }
+  392:    );
+  393: 
+  394:    setBulkResult(
+  395:     result.results||[]
+  396:    );
+  397: 
+  398:    setSt({
+  399:     e:"",
+  400:     m:`Bulk accept completed: ${result.success_count} successful, ${result.failure_count} failed.`
+  401:    });
+  402: 
+  403:    setSelected([]);
+  404:    list.refresh();
+  405:   }catch(e){
+  406:    setSt({e:e.message,m:""});
+  407:   }
+  408:  };
+  409: 
+  410:  const bulkReject=async()=>{
+  411:   if(!selected.length){
+  412:    setSt({
+  413:     e:"Select at least one application.",
+  414:     m:""
+  415:    });
+  416:    return;
+  417:   }
+  418: 
+  419:   const reason=prompt(
+  420:    `Rejection reason for ${selected.length} selected application(s):`,
+  421:    ""
+  422:   );
+  423: 
+  424:   if(reason===null)return;
+  425: 
+  426:   if(!window.confirm(
+  427:    `Reject ${selected.length} selected application(s)?`
+  428:   )){
+  429:    return;
+  430:   }
+  431: 
+  432:   try{
+  433:    const result=await send(
+  434:     token,
+  435:     "/api/staff/admissions/bulk/reject",
+  436:     "POST",
+  437:     {
+  438:      student_numbers:selected,
+  439:      reason:reason.trim()||null
+  440:     }
+  441:    );
+  442: 
+  443:    setBulkResult(
+  444:     result.results||[]
+  445:    );
+  446: 
+  447:    setSt({
+  448:     e:"",
+  449:     m:`Bulk reject completed: ${result.success_count} successful, ${result.failure_count} failed.`
+  450:    });
+  451: 
+  452:    setSelected([]);
+  453:    list.refresh();
+  454:   }catch(e){
+  455:    setSt({e:e.message,m:""});
+  456:   }
+  457:  };
+  458: 
+  459:  const toggleRequest=documentType=>{
+  460:   setRequestSelected(current=>
+  461:    current.includes(documentType)
+  462:     ?current.filter(x=>x!==documentType)
+  463:     :[...current,documentType]
+  464:   );
+  465:  };
+  466: 
+  467:  const requestDocuments=async()=>{
+  468:   if(!sel){
+  469:    setSt({
+  470:     e:"Open an application first.",
+  471:     m:""
+  472:    });
+  473:    return;
+  474:   }
+  475: 
+  476:   const chosen=docs.filter(
+  477:    row=>
+  478:     requestSelected.includes(
+  479:      row.document_type
+  480:     )
+  481:   );
+  482: 
+  483:   if(!chosen.length){
+  484:    setSt({
+  485:     e:"Select at least one missing document to request.",
+  486:     m:""
+  487:    });
+  488:    return;
+  489:   }
+  490: 
+  491:   const documents=chosen.map(
+  492:    row=>({
+  493:     document_type:row.document_type,
+  494:     document_label:
+  495:      row.document_label
+  496:      ||row.document_type,
+  497:     reason:
+  498:      requestReason.trim()
+  499:      ||null,
+  500:     instructions:
+  501:      requestInstructions.trim()
+  502:      ||null,
+  503:     due_date:
+  504:      requestDueDate
+  505:      ||null,
+  506:     is_required:
+  507:      row.is_required!==false
+  508:    })
+  509:   );
+  510: 
+  511:   try{
+  512:    await send(
+  513:     token,
+  514:     `/api/staff/admissions/applications/${sel}/outstanding-documents`,
+  515:     "POST",
+  516:     {documents}
+  517:    );
+  518: 
+  519:    setRequestSelected([]);
+  520:    setRequestReason("");
+  521:    setRequestInstructions("");
+  522:    setRequestDueDate("");
+  523: 
+  524:    setSt({
+  525:     e:"",
+  526:     m:`Requested ${documents.length} outstanding document(s).`
+  527:    });
+  528: 
+  529:    list.refresh();
+  530:    await open(sel);
+  531:   }catch(e){
+  532:    setSt({e:e.message,m:""});
+  533:   }
+  534:  };
+  535: 
+  536:  const requestable=docs.filter(
+  537:   row=>!row.document
+  538:  );
+  539: 
+  540:  return <><div className="page-title"><div><span className="eyebrow">Admissions</span><h1>Applications & Registration</h1><p>Preview and review uploaded documents, request missing evidence, process applications individually or in bulk, and retry registrations.</p></div></div><Alert {...st}/>
+  541: 
+  542:  <Panel title="Search & Filter">
+  543:   <div className="toolbar-grid">
+  544:    <input placeholder="Student number, name or email" value={search} onChange={e=>setSearch(e.target.value)}/>
+  545:    <select value={status} onChange={e=>setStatus(e.target.value)}>
+  546:     <option value="">All statuses</option>
+  547:     {["Pending","Outstanding Documents","Accepted","Rejected"].map(x=><option key={x}>{x}</option>)}
+  548:    </select>
+  549:    <button className="button gold" onClick={()=>setPath("/api/staff/admissions/applications"+q({search,status,limit:100}))}>Search</button>
+  550:   </div>
+  551:  </Panel>
+  552: 
+  553:  <Panel title={`Applications (${applications.length})`} text={`${selected.length} application(s) selected.`} actions={<div className="button-row"><button className="button gold" disabled={!selected.length} onClick={bulkAccept}>Accept Selected</button><Button danger onClick={bulkReject}>Reject Selected</Button><Button onClick={list.refresh}>Refresh</Button></div>}>
+  554:   <Alert e={list.e}/>
+  555:   {!applications.length?<div className="empty">No applications found.</div>:<div className="table-wrap"><table><thead><tr><th><input type="checkbox" checked={applications.length>0&&applications.every(x=>selected.includes(x.student_number))} onChange={toggleAll}/></th><th>Student Number</th><th>Name</th><th>Course</th><th>Cycle</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{applications.map(r=><tr key={r.student_number}><td><input type="checkbox" checked={selected.includes(r.student_number)} onChange={()=>toggleSelected(r.student_number)}/></td><td>{v(r.student_number)}</td><td>{[r.first_name,r.middle_name,r.last_name].filter(Boolean).join(" ")}</td><td>{v(r.course_code||r.qualification_id)}</td><td>{v(r.cycle_code)}</td><td><span className="badge">{v(r.app_status)}</span></td><td>{v(r.created_at)}</td><td><Button onClick={()=>open(r.student_number)}>Open</Button></td></tr>)}</tbody></table></div>}
+  556:  </Panel>
+  557: 
+  558:  {bulkResult.length>0&&<Panel title="Bulk Action Results" text="Each learner is processed separately so one failure does not hide successful records."><Tbl rows={bulkResult.map(x=>({student_number:x.student_number,status:x.success?"Success":"Failed",message:x.message||x.error||""}))} cols={["student_number","status","message"]}/></Panel>}
+
+
+========================================================================================
+5. QUICK CHECKS
+========================================================================================
+
+email_service uses smtplib.SMTP(: True
+email_service uses smtplib.SMTP_SSL(: False
+email_service contains starttls(: True
+AdminV3 individual accept exists: True
+AdminV3 bulk accept exists: True
+AdminV3 prompts for Cycle code: True
+AdminV3 prompts for Programme start date: True
+AdminV3 prompts for Expected completion date: True

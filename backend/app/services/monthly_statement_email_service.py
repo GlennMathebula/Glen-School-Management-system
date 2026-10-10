@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from datetime import (
     datetime,
     timezone,
@@ -246,6 +247,7 @@ def update_delivery_status(
 # SEND ONE STATEMENT
 # ============================================================
 
+@communication_guarded_call("monthly-statement-delivery", key_fields=("delivery.id",), recent_seconds=60, lock_ttl_seconds=120, fail_open=True, duplicate_mode="statement")
 def send_statement_delivery(
     delivery: dict,
 ) -> dict:

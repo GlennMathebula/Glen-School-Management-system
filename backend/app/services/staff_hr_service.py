@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from pathlib import Path
 from datetime import date,datetime
 from decimal import Decimal
@@ -24,6 +25,7 @@ def audit(actor,action,etype,eid,desc,before=None,after=None,meta=None):
     try:create_staff_audit_log(actor_staff_code=actor,action_code=action,module_code='HR_RECRUITMENT',entity_type=etype,entity_id=str(eid),description=desc,before_data=safe(before),after_data=safe(after),metadata=safe(meta or {}))
     except Exception as e:print(f'WARNING: HR audit failed: {e}')
 
+@communication_guarded_call("hr-applicant-email", key_fields=("application_id", "subject", "body"), recent_seconds=15, lock_ttl_seconds=60, fail_open=True, duplicate_mode="none")
 def notify(application_id,subject,body):
     try:
         with engine.connect() as c:r=c.execute(text("SELECT a.email FROM public.career_applications x JOIN public.career_applicants a ON a.id=x.applicant_id WHERE x.id=CAST(:id AS uuid)"),{'id':application_id}).mappings().first()

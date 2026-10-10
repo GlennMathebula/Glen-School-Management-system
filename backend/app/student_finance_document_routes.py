@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from pathlib import Path
 
 from fastapi import (
@@ -179,6 +180,7 @@ def download_receipt(
 @router.get(
     "/statement",
 )
+@redis_guarded_endpoint("finance:student", key_fields=("current_student.student_number",), ttl_seconds=300, busy_message="A finance operation for your account is already being processed.", unavailable_message="Statement generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def download_statement(
     current_student: dict = Depends(
         require_full_student_access

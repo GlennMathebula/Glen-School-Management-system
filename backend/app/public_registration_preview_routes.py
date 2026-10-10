@@ -1,3 +1,4 @@
+from app.abuse_rate_limit import enforce_abuse_rate_limit
 from fastapi import (
     APIRouter,
     HTTPException,
@@ -34,6 +35,16 @@ router = APIRouter(
 def verify_public_registration(
     request: PublicRegistrationVerifyRequest,
 ):
+    # REDIS_ABUSE_RATE_LIMIT: public-registration-verify
+    enforce_abuse_rate_limit(
+        scope="public-registration-verify",
+        identity=(
+            f"{request.student_number}|"
+            f"{request.id_or_passport}"
+        ),
+        limit=8,
+        window_seconds=300,
+    )
     try:
         result = (
             get_public_registration_preview(

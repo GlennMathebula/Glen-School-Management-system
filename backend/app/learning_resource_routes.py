@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from fastapi import (
     APIRouter,
     Depends,
@@ -718,6 +719,7 @@ def facilitator_archive_resource(
     "learning-resources/"
     "{resource_id}/generate-ai-notes"
 )
+@redis_guarded_endpoint("job:ai-notes", key_fields=("resource_id",), ttl_seconds=900, busy_message="AI notes for this resource are already being generated.", unavailable_message="AI-note generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def facilitator_generate_ai_notes(
     resource_id: str,
 

@@ -107,37 +107,22 @@ export function Admissions({token}){
  const accept=()=>{
   if(!sel)return;
 
-  const cycle=prompt(
-   "Cycle code (leave blank to use the application's configured cycle):",
-   ""
-  );
-
-  if(cycle===null)return;
-
-  const start=prompt(
-   "Programme start date YYYY-MM-DD (leave blank to use the cycle default):",
-   ""
-  );
-
-  if(start===null)return;
-
-  const end=prompt(
-   "Expected completion date YYYY-MM-DD (optional):",
-   ""
-  );
-
-  if(end===null)return;
+  if(!window.confirm(
+   "Accept this application? Required documents will be enforced. Registration will remain a separate action."
+  )){
+   return;
+  }
 
   doPost(
    `/api/staff/admissions/applications/${sel}/accept`,
    {
     funding_type:null,
-    cycle_code:cycle||null,
-    program_start_date:start||null,
-    expected_completion_date:end||null,
+    cycle_code:null,
+    program_start_date:null,
+    expected_completion_date:null,
     enforce_documents:true
    },
-   "Application accepted and registration processed."
+   "Application accepted. Registration has not been created."
   );
  };
 
@@ -158,39 +143,24 @@ export function Admissions({token}){
   );
  };
 
- const retryRegistration=()=>{
+ const registerLearner=()=>{
   if(!sel)return;
 
-  const cycle=prompt(
-   "Cycle code (optional):",
-   ""
-  );
-
-  if(cycle===null)return;
-
-  const start=prompt(
-   "Programme start date YYYY-MM-DD (optional):",
-   ""
-  );
-
-  if(start===null)return;
-
-  const end=prompt(
-   "Expected completion date YYYY-MM-DD (optional):",
-   ""
-  );
-
-  if(end===null)return;
+  if(!window.confirm(
+   "Register this accepted learner now? The backend will enforce the configured registration opening and closing dates."
+  )){
+   return;
+  }
 
   doPost(
-   `/api/staff/admissions/applications/${sel}/registration/retry`,
+   `/api/staff/admissions/applications/${sel}/register`,
    {
     funding_type:null,
-    cycle_code:cycle||null,
-    program_start_date:start||null,
-    expected_completion_date:end||null
+    cycle_code:null,
+    program_start_date:null,
+    expected_completion_date:null
    },
-   "Registration retry processed."
+   "Learner registration processed."
   );
  };
 
@@ -350,31 +320,10 @@ export function Admissions({token}){
   }
 
   if(!window.confirm(
-   `Accept and register ${selected.length} selected application(s)? Required documents will be enforced.`
+   `Accept ${selected.length} selected application(s)? Required documents will be enforced. Registration will remain separate.`
   )){
    return;
   }
-
-  const cycle=prompt(
-   "Shared cycle code (optional - leave blank to use each application's configured/default cycle):",
-   ""
-  );
-
-  if(cycle===null)return;
-
-  const start=prompt(
-   "Shared programme start date YYYY-MM-DD (optional):",
-   ""
-  );
-
-  if(start===null)return;
-
-  const end=prompt(
-   "Shared expected completion date YYYY-MM-DD (optional):",
-   ""
-  );
-
-  if(end===null)return;
 
   try{
    const result=await send(
@@ -384,9 +333,9 @@ export function Admissions({token}){
     {
      student_numbers:selected,
      funding_type:null,
-     cycle_code:cycle||null,
-     program_start_date:start||null,
-     expected_completion_date:end||null,
+     cycle_code:null,
+     program_start_date:null,
+     expected_completion_date:null,
      enforce_documents:true
     }
    );
@@ -537,7 +486,7 @@ export function Admissions({token}){
   row=>!row.document
  );
 
- return <><div className="page-title"><div><span className="eyebrow">Admissions</span><h1>Applications & Registration</h1><p>Preview and review uploaded documents, request missing evidence, process applications individually or in bulk, and retry registrations.</p></div></div><Alert {...st}/>
+ return <><div className="page-title"><div><span className="eyebrow">Admissions</span><h1>Applications & Registration</h1><p>Preview and review uploaded documents, request missing evidence, accept applications, and register accepted learners during the configured registration window.</p></div></div><Alert {...st}/>
 
  <Panel title="Search & Filter">
   <div className="toolbar-grid">
@@ -557,7 +506,7 @@ export function Admissions({token}){
 
  {bulkResult.length>0&&<Panel title="Bulk Action Results" text="Each learner is processed separately so one failure does not hide successful records."><Tbl rows={bulkResult.map(x=>({student_number:x.student_number,status:x.success?"Success":"Failed",message:x.message||x.error||""}))} cols={["student_number","status","message"]}/></Panel>}
 
- {sel&&<><Panel title={`Application ${sel}`} actions={<div className="button-row"><button className="button gold" onClick={accept}>Accept & Register</button><Button danger onClick={reject}>Reject</Button><Button onClick={retryRegistration}>Retry Registration</Button></div>}><Obj data={detail?.application||detail||{}}/></Panel>
+ {sel&&<><Panel title={`Application ${sel}`} actions={<div className="button-row"><button className="button gold" onClick={accept}>Accept Application</button><Button danger onClick={reject}>Reject</Button><Button onClick={registerLearner}>Register Learner</Button></div>}><Obj data={detail?.application||detail||{}}/></Panel>
 
  <Panel title="Uploaded Documents & Review" text="Preview the actual uploaded PDF/JPG/PNG before approving, rejecting or requesting a corrected re-upload.">
   {!docs.length?<div className="empty">No document requirements are configured for this application.</div>:<div className="table-wrap"><table><thead><tr><th>Document</th><th>Required</th><th>Stage</th><th>Uploaded File</th><th>Review Status</th><th>Request Status</th><th>Actions</th></tr></thead><tbody>{docs.map((row,i)=>{const doc=row.document||null;const req=row.request||null;return <tr key={`${row.document_type}-${i}`}><td>{v(row.document_label||row.document_type)}</td><td>{row.is_required?"Yes":"No"}</td><td>{v(row.trigger_stage)}</td><td>{doc?v(doc.original_filename):"Not uploaded"}</td><td><span className="badge">{v(doc?.review_status||"Not Uploaded")}</span></td><td><span className="badge">{v(req?.status||"—")}</span></td><td><div className="button-row">{doc&&<Button onClick={()=>previewDocument(row)}>Preview</Button>}{doc&&<Button onClick={()=>review(row,"Approved")}>Approve</Button>}{doc&&<Button danger onClick={()=>review(row,"Rejected")}>Reject</Button>}{doc&&<Button onClick={()=>review(row,"Resubmission Required")}>Request Re-upload</Button>}</div></td></tr>})}</tbody></table></div>}

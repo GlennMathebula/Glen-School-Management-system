@@ -1,5 +1,6 @@
 import mimetypes
 import smtplib
+import ssl
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -144,25 +145,50 @@ def send_email(
     # SMTP CONNECTION
     # --------------------------------------------------------
 
-    with smtplib.SMTP(
-        settings.smtp_host,
-        settings.smtp_port,
-        timeout=30,
-    ) as server:
+    smtp_port = int(settings.smtp_port)
+    ssl_context = ssl.create_default_context()
 
-        server.ehlo()
+    if smtp_port == 465:
 
-        if settings.smtp_use_tls:
+        with smtplib.SMTP_SSL(
+            settings.smtp_host,
+            smtp_port,
+            timeout=30,
+            context=ssl_context,
+        ) as server:
 
-            server.starttls()
+            server.login(
+                settings.smtp_username,
+                settings.smtp_password,
+            )
+
+            server.send_message(
+                message
+            )
+
+    else:
+
+        with smtplib.SMTP(
+            settings.smtp_host,
+            smtp_port,
+            timeout=30,
+        ) as server:
 
             server.ehlo()
 
-        server.login(
-            settings.smtp_username,
-            settings.smtp_password,
-        )
+            if settings.smtp_use_tls:
 
-        server.send_message(
-            message
-        )
+                server.starttls(
+                    context=ssl_context
+                )
+
+                server.ehlo()
+
+            server.login(
+                settings.smtp_username,
+                settings.smtp_password,
+            )
+
+            server.send_message(
+                message
+            )

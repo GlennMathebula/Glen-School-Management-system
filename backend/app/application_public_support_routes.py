@@ -1,3 +1,5 @@
+from app.redis_read_cache import redis_cached_endpoint
+from app.abuse_rate_limit import enforce_abuse_rate_limit
 from fastapi import (
     APIRouter,
     File,
@@ -6,9 +8,14 @@ from fastapi import (
     UploadFile,
 )
 
+from app.redis_client import (
+    RedisLockBusyError,
+    RedisLockUnavailableError,
+)
 from app.models.application import (
     ApplicationIdentityRequest,
 )
+from app.services.student_document_service import MAX_DOCUMENT_SIZE_BYTES
 from app.services.application_public_service import (
     get_public_application_catalogue,
     get_public_application_status,
@@ -26,6 +33,16 @@ router = APIRouter(
 def public_application_status(
     identity: ApplicationIdentityRequest,
 ):
+    # REDIS_ABUSE_RATE_LIMIT: public-application-status
+    enforce_abuse_rate_limit(
+        scope="public-application-status",
+        identity=(
+            f"{identity.student_number}|"
+            f"{identity.national_id}"
+        ),
+        limit=12,
+        window_seconds=300,
+    )
     try:
         result = get_public_application_status(
             identity.student_number,
@@ -58,6 +75,7 @@ def public_application_status(
 
 
 @router.get("/catalogue")
+@redis_cached_endpoint("academic-reference", key_fields=(), ttl_seconds=180)
 def public_application_catalogue():
     try:
         return {
@@ -93,7 +111,9 @@ async def public_application_document_upload(
     file: UploadFile = File(...),
 ):
     try:
-        file_bytes = await file.read()
+        file_bytes = await file.read(
+            MAX_DOCUMENT_SIZE_BYTES + 1
+        )
 
         result = upload_application_document(
             student_number=student_number,
@@ -116,6 +136,22 @@ async def public_application_document_upload(
             ),
             "document": result,
         }
+
+    except RedisLockBusyError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+
+    except RedisLockUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Document upload protection is "
+                "temporarily unavailable. Please "
+                "try again shortly."
+            ),
+        ) from error
 
     except ValueError as error:
         raise HTTPException(

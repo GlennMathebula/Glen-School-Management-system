@@ -1,3 +1,4 @@
+from app.critical_write_guard import redis_guarded_endpoint
 from datetime import (
     date,
     datetime,
@@ -297,6 +298,7 @@ def assessor_module_queue(
 @router.post(
     "/assessor/module-marks"
 )
+@redis_guarded_endpoint("assessment:module-attempt", key_fields=("payload.module_registration_id", "payload.attempt_number"), ttl_seconds=120, busy_message="This module assessment attempt is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_capture_module_mark(
     payload: ModuleMarkCaptureRequest,
 
@@ -388,6 +390,7 @@ def assessor_capture_module_mark(
 @router.put(
     "/assessor/module-marks/{mark_id}"
 )
+@redis_guarded_endpoint("assessment:module-record", key_fields=("mark_id",), ttl_seconds=120, busy_message="This module assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_update_module_mark(
     mark_id: str,
     payload: ModuleMarkUpdateRequest,
@@ -473,6 +476,7 @@ def assessor_update_module_mark(
 @router.post(
     "/assessor/module-marks/{mark_id}/submit"
 )
+@redis_guarded_endpoint("assessment:module-record", key_fields=("mark_id",), ttl_seconds=120, busy_message="This module assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_submit_module_mark(
     mark_id: str,
 
@@ -599,6 +603,7 @@ def moderator_module_queue(
 @router.post(
     "/moderator/module-marks/{mark_id}/moderate"
 )
+@redis_guarded_endpoint("assessment:module-record", key_fields=("mark_id",), ttl_seconds=120, busy_message="This module assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def moderator_approve_module_mark(
     mark_id: str,
 
@@ -689,6 +694,7 @@ def moderator_approve_module_mark(
 @router.post(
     "/moderator/module-marks/{mark_id}/return"
 )
+@redis_guarded_endpoint("assessment:module-record", key_fields=("mark_id",), ttl_seconds=120, busy_message="This module assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def moderator_return_module_mark(
     mark_id: str,
     payload: ModerationReturnRequest,
@@ -835,6 +841,7 @@ def assessor_summative_queue(
 @router.post(
     "/assessor/summative"
 )
+@redis_guarded_endpoint("assessment:summative-attempt", key_fields=("payload.registration_id", "payload.assessment_type", "payload.attempt_number"), ttl_seconds=120, busy_message="This summative assessment attempt is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_capture_summative(
     payload: SummativeAssessmentCaptureRequest,
 
@@ -936,6 +943,7 @@ def assessor_capture_summative(
 @router.put(
     "/assessor/summative/{assessment_id}"
 )
+@redis_guarded_endpoint("assessment:summative-record", key_fields=("assessment_id",), ttl_seconds=120, busy_message="This summative assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_update_summative(
     assessment_id: str,
     payload: SummativeAssessmentUpdateRequest,
@@ -1027,6 +1035,7 @@ def assessor_update_summative(
 @router.post(
     "/assessor/summative/{assessment_id}/submit"
 )
+@redis_guarded_endpoint("assessment:summative-record", key_fields=("assessment_id",), ttl_seconds=120, busy_message="This summative assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def assessor_submit_summative(
     assessment_id: str,
 
@@ -1172,6 +1181,7 @@ def moderator_summative_queue(
 @router.post(
     "/moderator/summative/{assessment_id}/moderate"
 )
+@redis_guarded_endpoint("assessment:summative-record", key_fields=("assessment_id",), ttl_seconds=120, busy_message="This summative assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def moderator_approve_summative(
     assessment_id: str,
 
@@ -1270,6 +1280,7 @@ def moderator_approve_summative(
 @router.post(
     "/moderator/summative/{assessment_id}/return"
 )
+@redis_guarded_endpoint("assessment:summative-record", key_fields=("assessment_id",), ttl_seconds=120, busy_message="This summative assessment is already being processed.", unavailable_message="Assessment write protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def moderator_return_summative(
     assessment_id: str,
     payload: ModerationReturnRequest,

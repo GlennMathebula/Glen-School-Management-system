@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from pathlib import Path
 from datetime import date
 from uuid import uuid4
@@ -80,6 +81,7 @@ def owned_document_path(*,applicant_id,application_id,document_id):
     if not p.exists(): raise ValueError('Stored application document file was not found.')
     return p,r['original_filename'],r['mime_type']
 
+@communication_guarded_call("careers-application-submit", key_fields=("applicant_id", "application_id"), recent_seconds=30, lock_ttl_seconds=120, fail_open=True)
 def submit_application(*,applicant_id,application_id):
     with engine.begin() as c:
         a=_owned(c,applicant_id,application_id)

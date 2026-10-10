@@ -1,3 +1,4 @@
+from app.communication_dedup import communication_guarded_call
 from datetime import date
 from uuid import UUID
 
@@ -709,6 +710,7 @@ def get_student_message_thread(
 # CREATE MESSAGE THREAD
 # ============================================================
 
+@communication_guarded_call("student-thread-create", key_fields=("student_number", "subject", "category", "message"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def create_student_message_thread(
     student_number: str,
     subject: str,
@@ -874,6 +876,7 @@ def create_student_message_thread(
 # REPLY TO THREAD
 # ============================================================
 
+@communication_guarded_call("student-thread-reply", key_fields=("student_number", "thread_id", "message"), recent_seconds=10, lock_ttl_seconds=60, fail_open=True)
 def reply_to_student_message_thread(
     student_number: str,
     thread_id: str,

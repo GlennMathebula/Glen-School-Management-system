@@ -1,9 +1,12 @@
+from app.critical_write_guard import redis_guarded_endpoint
+from app.abuse_rate_limit import enforce_abuse_rate_limit, enforce_resend_cooldown
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
 )
 
+from app.redis_client import RedisLockBusyError
 from app.models.application import (
     ApplicationCreate,
     ApplicationStatusUpdate,
@@ -13,6 +16,7 @@ from app.models.registration import (
     RegistrationCreate,
     RegistrationStatusUpdate,
 )
+from app.auth_rate_limit import enforce_auth_rate_limit
 from app.models.student_auth import (
     StudentPasswordChange,
     StudentPasswordLogin,
@@ -84,6 +88,12 @@ def submit_application(
             "application": result,
         }
 
+    except RedisLockBusyError as error:
+        raise HTTPException(
+            status_code=409,
+            detail=str(error),
+        ) from error
+
     except ValueError as error:
 
         raise HTTPException(
@@ -118,6 +128,13 @@ def resend_application_acknowledgement(
     identity: ApplicationIdentityRequest,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: application-acknowledgement-resend
+    enforce_resend_cooldown(
+        scope="application-acknowledgement-resend",
+        identity=student_number,
+        cooldown_seconds=60,
+        hourly_limit=5,
+    )
     try:
 
         verify_public_application_identity(
@@ -380,6 +397,13 @@ def resend_registration_por(
     student_number: str,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: registration-por-resend
+    enforce_resend_cooldown(
+        scope="registration-por-resend",
+        identity=student_number,
+        cooldown_seconds=60,
+        hourly_limit=5,
+    )
     try:
 
         result = (
@@ -436,6 +460,7 @@ def resend_registration_por(
     "enrolment-form/generate",
     tags=["Registrations"],
 )
+@redis_guarded_endpoint("job:enrolment-form", key_fields=("student_number",), ttl_seconds=300, busy_message="This enrolment form is already being generated.", unavailable_message="Enrolment-form generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def generate_enrolment_document(
     student_number: str,
 ):
@@ -572,6 +597,13 @@ def issue_existing_student_account(
     student_number: str,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: student-account-issue
+    enforce_abuse_rate_limit(
+        scope="student-account-issue",
+        identity=student_number,
+        limit=3,
+        window_seconds=3600,
+    )
     try:
 
         result = (
@@ -623,6 +655,13 @@ def reissue_student_password(
     student_number: str,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: student-password-reissue
+    enforce_resend_cooldown(
+        scope="student-password-reissue",
+        identity=student_number,
+        cooldown_seconds=60,
+        hourly_limit=5,
+    )
     try:
 
         result = (
@@ -672,6 +711,13 @@ def create_student_pin(
     request: StudentPinSetup,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: student-pin-setup
+    enforce_abuse_rate_limit(
+        scope="student-pin-setup",
+        identity=request.student_number,
+        limit=5,
+        window_seconds=600,
+    )
     try:
 
         result = (
@@ -728,6 +774,14 @@ def student_password_login(
     request: StudentPasswordLogin,
 ):
 
+    # REDIS_AUTH_RATE_LIMIT: student-password-login
+    enforce_auth_rate_limit(
+        scope="student-password-login",
+        identity=request.student_number,
+        limit=8,
+        window_seconds=300,
+    )
+
     try:
 
         result = (
@@ -783,6 +837,14 @@ def student_pin_login(
         get_current_student
     ),
 ):
+
+    # REDIS_AUTH_RATE_LIMIT: student-pin-login
+    enforce_auth_rate_limit(
+        scope="student-pin-login",
+        identity=request.student_number,
+        limit=8,
+        window_seconds=300,
+    )
 
     if (
         current_student.get(
@@ -864,6 +926,13 @@ def update_student_password(
     request: StudentPasswordChange,
 ):
 
+    # REDIS_ABUSE_RATE_LIMIT: student-password-change
+    enforce_abuse_rate_limit(
+        scope="student-password-change",
+        identity=request.student_number,
+        limit=5,
+        window_seconds=600,
+    )
     try:
 
         result = (

@@ -1,3 +1,4 @@
+from app.redis_read_cache import redis_cached_endpoint, redis_invalidate_after
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.backend_finalization import (
@@ -39,6 +40,7 @@ def admin_system_settings(
 
 
 @router.patch("/settings/{setting_key}")
+@redis_invalidate_after(("system-rbac",))
 def admin_system_setting_update(
     setting_key: str,
     payload: SystemSettingUpdate,
@@ -66,6 +68,7 @@ def admin_staff_accounts(
 
 
 @router.post("/staff-accounts")
+@redis_invalidate_after(("system-rbac",))
 def admin_staff_account_create(
     payload: StaffAccountCreate,
     current_staff: dict = Depends(require_staff_accounts),
@@ -87,6 +90,7 @@ def admin_staff_account_create(
 
 
 @router.patch("/staff-accounts/{staff_code}/status")
+@redis_invalidate_after(("system-rbac",))
 def admin_staff_account_status(
     staff_code: str,
     payload: StaffAccountStatusUpdate,
@@ -106,6 +110,7 @@ def admin_staff_account_status(
 
 
 @router.get("/roles")
+@redis_cached_endpoint("system-rbac", key_fields=(), ttl_seconds=600)
 def admin_roles(
     current_staff: dict = Depends(require_roles_permissions),
 ):
@@ -114,6 +119,7 @@ def admin_roles(
 
 
 @router.patch("/roles/{role_code}/permissions")
+@redis_invalidate_after(("system-rbac",))
 def admin_role_permissions_update(
     role_code: str,
     payload: RolePermissionsUpdate,
@@ -142,6 +148,7 @@ def admin_staff_employee_options(
 
 
 @router.get("/permissions")
+@redis_cached_endpoint("system-rbac", key_fields=(), ttl_seconds=600)
 def admin_permission_catalog(
     current_staff: dict = Depends(require_roles_permissions),
 ):

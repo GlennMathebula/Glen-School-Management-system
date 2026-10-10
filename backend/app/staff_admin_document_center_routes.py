@@ -1,3 +1,5 @@
+from app.critical_write_guard import redis_guarded_endpoint
+from app.abuse_rate_limit import enforce_resend_cooldown
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -91,6 +93,13 @@ def admin_proof_of_registration_resend(
     student_number: str,
     current_staff: dict = Depends(require_admin_staff),
 ):
+    # REDIS_ABUSE_RATE_LIMIT: registration-por-resend
+    enforce_resend_cooldown(
+        scope="registration-por-resend",
+        identity=student_number,
+        cooldown_seconds=60,
+        hourly_limit=5,
+    )
     del current_staff
 
     try:
@@ -117,6 +126,7 @@ def admin_proof_of_registration_resend(
 @router.get(
     "/{student_number}/letter-of-completion"
 )
+@redis_guarded_endpoint("job:completion-letter", key_fields=("student_number",), ttl_seconds=300, busy_message="This completion letter is already being generated.", unavailable_message="Completion-letter generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_letter_of_completion(
     student_number: str,
     current_staff: dict = Depends(require_admin_staff),
@@ -143,6 +153,7 @@ def admin_letter_of_completion(
 @router.get(
     "/{student_number}/graduation-letter"
 )
+@redis_guarded_endpoint("job:graduation-letter", key_fields=("student_number",), ttl_seconds=300, busy_message="This graduation letter is already being generated.", unavailable_message="Graduation-letter generation protection is temporarily unavailable. Please try again shortly.", fail_open=False)
 def admin_graduation_letter(
     student_number: str,
     current_staff: dict = Depends(require_admin_staff),

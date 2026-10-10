@@ -1,4 +1,5 @@
-﻿from fastapi import (
+from app.redis_read_cache import redis_cached_endpoint, redis_invalidate_after
+from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
@@ -66,6 +67,7 @@ require_manage_class_enrolments = (
 @router.get(
     "/cycles"
 )
+@redis_cached_endpoint("academic-reference", key_fields=(), ttl_seconds=180)
 def academic_cycles(
     current_staff: dict = Depends(
         require_manage_academic_structure
@@ -99,6 +101,7 @@ def academic_cycles(
 @router.post(
     "/cycles"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_cycle_create(
     payload: CycleCreateRequest,
     current_staff: dict = Depends(
@@ -162,6 +165,7 @@ def academic_cycle_create(
 @router.put(
     "/cycles/{cycle_code}"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_cycle_update(
     cycle_code: str,
     payload: CycleUpdateRequest,
@@ -223,6 +227,7 @@ def academic_cycle_update(
 @router.patch(
     "/cycles/{cycle_code}/status"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_cycle_status(
     cycle_code: str,
     payload: CycleStatusRequest,
@@ -265,6 +270,7 @@ def academic_cycle_status(
 @router.get(
     "/courses"
 )
+@redis_cached_endpoint("academic-reference", key_fields=(), ttl_seconds=180)
 def academic_courses(
     current_staff: dict = Depends(
         require_manage_academic_structure
@@ -298,6 +304,7 @@ def academic_courses(
 @router.get(
     "/cycles/{cycle_code}/courses"
 )
+@redis_cached_endpoint("academic-reference", key_fields=('cycle_code',), ttl_seconds=180)
 def academic_cycle_courses(
     cycle_code: str,
     current_staff: dict = Depends(
@@ -332,6 +339,7 @@ def academic_cycle_courses(
 @router.put(
     "/cycles/{cycle_code}/courses/{course_code}"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_cycle_course_status(
     cycle_code: str,
     course_code: str,
@@ -423,6 +431,7 @@ def academic_classes(
 @router.post(
     "/classes"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_class_create(
     payload: ClassCreateRequest,
     current_staff: dict = Depends(
@@ -480,6 +489,7 @@ def academic_class_create(
 @router.put(
     "/classes/{class_code}"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_class_update(
     class_code: str,
     payload: ClassUpdateRequest,
@@ -565,6 +575,7 @@ def academic_staff_options(
 @router.put(
     "/classes/{class_code}/staff"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_class_staff_assignment(
     class_code: str,
     payload: ClassStaffAssignmentRequest,
@@ -683,6 +694,7 @@ def academic_eligible_class_learners(
 @router.post(
     "/classes/{class_code}/enrolments"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_class_enrolment_create(
     class_code: str,
     payload: ClassEnrolmentRequest,
@@ -726,6 +738,7 @@ def academic_class_enrolment_create(
     "/classes/{class_code}/enrolments/"
     "{registration_id}/remove"
 )
+@redis_invalidate_after(("academic-reference",))
 def academic_class_enrolment_remove(
     class_code: str,
     registration_id: str,

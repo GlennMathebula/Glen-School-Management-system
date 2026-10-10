@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import text
 
 from app.database import engine
+from app.application_document_upload_guard import application_document_upload_guard
 from app.services.student_document_service import upload_student_document
 
 
@@ -708,41 +709,50 @@ def upload_application_document(
         )
     )
 
-    request_id = (
-        _get_or_create_application_request(
-            student_number=(
-                application["student_number"]
-            ),
-            course_code=(
-                application.get(
-                    "qualification_id"
-                )
-            ),
-            document_type=(
-                definition["document_type"]
-            ),
-            document_label=(
-                definition["document_label"]
-            ),
-            is_required=(
-                definition["is_required"]
-            ),
-        )
-    )
-
-    result = upload_student_document(
+    # APPLICATION_DOCUMENT_UPLOAD_REDIS_LOCK
+    with application_document_upload_guard(
         student_number=(
             application["student_number"]
         ),
-        request_id=request_id,
-        filename=filename,
-        mime_type=mime_type,
-        file_bytes=file_bytes,
-    )
+        document_type=(
+            definition["document_type"]
+        ),
+    ):
+        request_id = (
+            _get_or_create_application_request(
+                student_number=(
+                    application["student_number"]
+                ),
+                course_code=(
+                    application.get(
+                        "qualification_id"
+                    )
+                ),
+                document_type=(
+                    definition["document_type"]
+                ),
+                document_label=(
+                    definition["document_label"]
+                ),
+                is_required=(
+                    definition["is_required"]
+                ),
+            )
+        )
 
-    result["application_document"] = True
-    result["is_required"] = (
-        definition["is_required"]
-    )
+        result = upload_student_document(
+            student_number=(
+                application["student_number"]
+            ),
+            request_id=request_id,
+            filename=filename,
+            mime_type=mime_type,
+            file_bytes=file_bytes,
+        )
 
-    return result
+        result["application_document"] = True
+        result["is_required"] = (
+            definition["is_required"]
+        )
+
+        return result

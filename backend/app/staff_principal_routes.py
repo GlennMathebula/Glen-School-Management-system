@@ -1,4 +1,5 @@
-﻿from fastapi import (
+from app.abuse_rate_limit import enforce_resend_cooldown
+from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
@@ -186,6 +187,13 @@ def principal_staff_credentials_reset(
         require_change_staff_credentials
     ),
 ):
+    # REDIS_ABUSE_RATE_LIMIT: staff-temporary-credentials-reset
+    enforce_resend_cooldown(
+        scope="staff-temporary-credentials-reset",
+        identity=staff_code,
+        cooldown_seconds=60,
+        hourly_limit=5,
+    )
     try:
         record = (
             reset_staff_credentials(
