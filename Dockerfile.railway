@@ -1,0 +1,68 @@
+# Glen Moniques SMS - Railway full-project image
+#
+# One application service hosts:
+#   - FastAPI backend
+#   - public website
+#   - learner applications portal
+#   - careers portal
+#   - student LMS web portal
+#
+# Redis remains a separate Railway service.
+
+FROM node:24-bookworm-slim AS web-builder
+
+WORKDIR /build
+
+COPY frontends/website-web/package*.json ./frontends/website-web/
+COPY frontends/applications-web/package*.json ./frontends/applications-web/
+COPY frontends/careers-web/package*.json ./frontends/careers-web/
+COPY frontends/student-web/package*.json ./frontends/student-web/
+
+RUN npm ci --prefix frontends/website-web \
+ && npm ci --prefix frontends/applications-web \
+ && npm ci --prefix frontends/careers-web \
+ && npm ci --prefix frontends/student-web
+
+COPY frontends ./frontends
+
+RUN npm --prefix frontends/website-web run build \
+ && npm --prefix frontends/applications-web run build \
+ && npm --prefix frontends/careers-web run build \
+ && npm --prefix frontends/student-web run build
+
+
+FROM python:3.13-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      fonts-dejavu-core \
+      libffi8 \
+      libharfbuzz0b \
+      libjpeg62-turbo \
+      libopenjp2-7 \
+      libpango-1.0-0 \
+      libpangoft2-1.0-0 \
+      shared-mime-info \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /srv
+
+COPY backend/requirements.txt /srv/backend/requirements.txt
+
+RUN python -m pip install --upgrade pip \
+ && python -m pip install --no-cache-dir -r /srv/backend/requirements.txt
+
+COPY backend /srv/backend
+
+COPY --from=web-builder /build/frontends/website-web/dist /srv/frontends/website-web/dist
+COPY --from=web-builder /build/frontends/applications-web/dist /srv/frontends/applications-web/dist
+COPY --from=web-builder /build/frontends/careers-web/dist /srv/frontends/careers-web/dist
+COPY --from=web-builder /build/frontends/student-web/dist /srv/frontends/student-web/dist
+
+WORKDIR /srv/backend
+
+CMD ["sh", "-c", "python -m uvicorn app.deployment_gateway:app --host 0.0.0.0 --port ${PORT:-8080}"]
