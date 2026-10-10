@@ -1433,3 +1433,119 @@ img {
 .merch-card-body li::marker {
   color: #9a7416;
 }
+
+/* =========================
+   HEADER NAVIGATION V2
+   ========================= */
+
+.home-nav-link {
+  width: 42px;
+  height: 42px;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.home-nav-link:hover,
+.home-nav-link.active {
+  background: #f6eed7;
+  color: var(--navy);
+}
+
+/* =========================
+   PAYMENT STATUS PAGES
+   ========================= */
+
+.payment-status-page {
+  min-height: 68vh;
+  padding: 96px 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(216,169,47,.12), transparent 34%),
+    var(--surface);
+}
+
+.payment-status-card {
+  max-width: 760px;
+  padding: 54px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: var(--shadow);
+}
+
+.payment-status-card h1 {
+  margin: 12px 0 16px;
+  color: var(--navy);
+  font-size: clamp(38px, 6vw, 60px);
+  letter-spacing: -.04em;
+}
+
+.payment-status-card > p {
+  max-width: 620px;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.payment-status-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.payment-status-icon.success {
+  background: #edf8ef;
+  color: #23733a;
+}
+
+.payment-status-icon.cancel {
+  background: #fff1f0;
+  color: #a02f2f;
+}
+
+.payment-status-actions {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .home-nav-link {
+    width: 100%;
+    height: auto;
+    justify-items: start;
+    border-radius: 8px;
+    padding: 12px 8px !important;
+  }
+
+  .payment-status-page {
+    padding: 64px 0;
+  }
+
+  .payment-status-card {
+    padding: 36px 22px;
+  }
+
+  .payment-status-actions {
+    flex-direction: column;
+  }
+
+  .payment-status-actions .btn {
+    width: 100%;
+  }
+}
+

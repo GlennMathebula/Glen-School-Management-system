@@ -209,18 +209,19 @@ function Header() {
         </button>
 
         <nav className={open ? "main-nav open" : "main-nav"}>
-          <NavLink to="/">Home</NavLink>
-          <NavLink to="/programmes">Programmes</NavLink>
-          <NavLink to="/shop">Shop</NavLink>
-          <NavLink to="/admissions">Admissions</NavLink>
-          <NavLink to="/about">About Us</NavLink>
+          <NavLink
+            className="home-nav-link"
+            to="/"
+            aria-label="Home"
+            title="Home"
+          >
+            <span aria-hidden="true">⌂</span>
+          </NavLink>
           <NavLink to="/contact">Contact</NavLink>
+          <NavLink to="/about">About Us</NavLink>
           <a href={PUBLIC_LINKS.careers}>Careers</a>
           <ExternalButton href={PUBLIC_LINKS.applications} className="gold small">
-            Apply Now
-          </ExternalButton>
-          <ExternalButton href={PUBLIC_LINKS.studentPortal} className="outline small">
-            Student Portal
+            Apply / Register
           </ExternalButton>
         </nav>
       </div>
@@ -243,11 +244,12 @@ function Footer() {
         </div>
 
         <div>
-          <h4>Study</h4>
+          <h4>Explore</h4>
           <Link to="/programmes">Programmes</Link>
           <Link to="/shop">Glen Moniques Shop</Link>
+          <Link to="/donate">Donate</Link>
           <Link to="/admissions">Admissions</Link>
-          <a href={PUBLIC_LINKS.applications}>Apply to Study</a>
+          <a href={PUBLIC_LINKS.applications}>Apply / Register</a>
           <a href={PUBLIC_LINKS.studentPortal}>Student Portal</a>
         </div>
 
@@ -1098,6 +1100,112 @@ function LegalPage({ title, updated, children }) {
   );
 }
 
+function Donate() {
+  return (
+    <>
+      <PageHero
+        eyebrow="Support Glen Moniques"
+        title="Help us expand access to skills and opportunity."
+        text="Donation enquiries are handled directly by Glen Moniques. Secure online donation payment functionality will only be activated once the approved payment workflow is ready."
+      />
+      <section className="section">
+        <div className="container split">
+          <div>
+            <span className="eyebrow dark">Donate</span>
+            <h2>Support learning, learner development and community opportunity.</h2>
+            <p className="lead">
+              If you would like to support Glen Moniques programmes or learner
+              development initiatives, contact our team for the approved donation
+              process and supporting information.
+            </p>
+            <p>
+              Please do not send money to an unverified account or unofficial
+              payment link. Glen Moniques will confirm the correct process before
+              any donation is made.
+            </p>
+            <a
+              className="btn navy"
+              href="mailto:admin@glenmoniques.co.za?subject=Donation%20Enquiry"
+            >
+              Send a Donation Enquiry
+            </a>
+          </div>
+
+          <div className="info-card">
+            <h3>Donation enquiries</h3>
+            <p>
+              Email: <a href="mailto:admin@glenmoniques.co.za">admin@glenmoniques.co.za</a>
+            </p>
+            <p>
+              Telephone: <a href="tel:+27158802413">015 880 2413</a>
+            </p>
+            <p>
+              Our team will confirm the purpose, payment method and supporting
+              documentation for the donation.
+            </p>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function PaymentReturn() {
+  return (
+    <section className="payment-status-page">
+      <div className="container payment-status-card">
+        <div className="payment-status-icon success" aria-hidden="true">✓</div>
+        <span className="eyebrow dark">PayFast</span>
+        <h1>Payment submitted</h1>
+        <p className="lead">
+          Your payment has been returned to Glen Moniques and is being verified.
+        </p>
+        <p>
+          Payment confirmation is completed securely by the PayFast notification
+          process. Please allow a short moment for your finance record to update,
+          then refresh the Student Portal.
+        </p>
+        <div className="payment-status-actions">
+          <a className="btn navy" href={PUBLIC_LINKS.studentPortal}>
+            Open Student Portal
+          </a>
+          <Link className="btn outline-dark" to="/">
+            Return Home
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PaymentCancel() {
+  return (
+    <section className="payment-status-page">
+      <div className="container payment-status-card">
+        <div className="payment-status-icon cancel" aria-hidden="true">×</div>
+        <span className="eyebrow dark">PayFast</span>
+        <h1>Payment cancelled</h1>
+        <p className="lead">
+          The PayFast checkout was cancelled before you returned to Glen Moniques.
+        </p>
+        <p>
+          You can return to the Student Portal to review your account and start a
+          new payment when you are ready. If you believe money was deducted,
+          check your finance page before trying again.
+        </p>
+        <div className="payment-status-actions">
+          <a className="btn navy" href={PUBLIC_LINKS.studentPortal}>
+            Open Student Portal
+          </a>
+          <Link className="btn outline-dark" to="/">
+            Return Home
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ContactStrip() {
   return (
     <section className="contact-strip">
@@ -1147,6 +1255,9 @@ export default function App() {
           <Route path="/admissions" element={<Admissions />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/donate" element={<Donate />} />
+          <Route path="/payfast/return" element={<PaymentReturn />} />
+          <Route path="/payfast/cancel" element={<PaymentCancel />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/popia" element={<Popia />} />
           <Route path="/cookies" element={<Cookies />} />
