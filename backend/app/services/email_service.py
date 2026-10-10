@@ -29,7 +29,8 @@ def _send_resend(*, recipient_email, subject, html_body, text_body=None, attachm
              "content": base64.b64encode(f.read_bytes()).decode("ascii")}]
     req = request.Request("https://api.resend.com/emails",
         data=json.dumps(payload).encode(), method="POST",
-        headers={"Authorization": "Bearer " + settings.resend_api_key,
+        headers={"User-Agent": "GlenMoniquesSMS/1.0",
+                 "Authorization": "Bearer " + settings.resend_api_key,
                  "Content-Type": "application/json", "Accept": "application/json"})
     try:
         with request.urlopen(req, timeout=20) as response:
@@ -39,6 +40,13 @@ def _send_resend(*, recipient_email, subject, html_body, text_body=None, attachm
         try:
             import logging
             import re
+
+            response_type = str(exc.headers.get("Content-Type", "unknown"))[:80]
+            response_server = str(exc.headers.get("Server", "unknown"))[:50]
+            logging.getLogger(__name__).warning(
+                "Resend gateway metadata: content_type=%s | server=%s | cf_ray_present=%s",
+                response_type, response_server, bool(exc.headers.get("CF-Ray")),
+            )
 
             body = exc.read(2048).decode("utf-8", errors="replace")
             try:
