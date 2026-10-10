@@ -1,4 +1,8 @@
 import mimetypes
+import base64
+import json
+from urllib import request, error
+from email.utils import formataddr
 import smtplib
 import ssl
 from email.message import EmailMessage
@@ -10,7 +14,40 @@ from app.config import settings
 # SMTP VALIDATION
 # ============================================================
 
+def _send_resend(*, recipient_email, subject, html_body, text_body=None, attachment_path=None, attachment_name=None):
+    if not settings.resend_api_key or not settings.resend_from_email:
+        raise RuntimeError("Resend configuration missing")
+    payload = {"from": formataddr(("Glen Moniques", settings.resend_from_email)),
+               "to": [recipient_email], "subject": subject, "html": html_body}
+    if text_body is not None:
+        payload["text"] = text_body
+    if attachment_path:
+        f = Path(attachment_path)
+        if not f.is_file():
+            raise FileNotFoundError(f"Attachment missing: {f}")
+        payload["attachments"] = [{"filename": attachment_name or f.name,
+             "content": base64.b64encode(f.read_bytes()).decode("ascii")}]
+    req = request.Request("https://api.resend.com/emails",
+        data=json.dumps(payload).encode(), method="POST",
+        headers={"Authorization": "Bearer " + settings.resend_api_key,
+                 "Content-Type": "application/json", "Accept": "application/json"})
+    try:
+        with request.urlopen(req, timeout=20) as response:
+            response.read()
+    except error.HTTPError as exc:
+        raise RuntimeError(f"Resend rejected email (HTTP {exc.code})") from None
+    except error.URLError:
+        raise RuntimeError("Resend HTTPS network failure") from None
+
+
 def validate_email_configuration() -> None:
+    provider = settings.email_provider.strip().lower()
+    if provider == "resend":
+        if not settings.resend_api_key or not settings.resend_from_email:
+            raise RuntimeError("Resend configuration missing")
+        return
+    if provider != "smtp":
+        raise RuntimeError("Unsupported email provider")
 
     missing = []
 
@@ -49,6 +86,10 @@ def send_email(
 ) -> None:
 
     validate_email_configuration()
+    if settings.email_provider.strip().lower() == "resend":
+        return _send_resend(recipient_email=recipient_email, subject=subject,
+            html_body=html_body, text_body=text_body,
+            attachment_path=attachment_path, attachment_name=attachment_name)
 
     message = EmailMessage()
 

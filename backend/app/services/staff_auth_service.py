@@ -1,4 +1,7 @@
 import html
+import re
+from app.config import settings
+from app.services.sms_service import send_sms, normalise_phone_number
 import secrets
 from datetime import (
     datetime,
@@ -606,6 +609,18 @@ def _build_staff_otp_email(
     )
 
 
+def _masked_mobile(phone: str) -> str:
+    digits = re.sub(r"\D", "", str(phone or ""))
+    return "*" * (len(digits)-4) + digits[-4:] if len(digits) >= 4 else "registered mobile"
+
+
+def _send_staff_otp_sms(*, account: dict, otp: str) -> None:
+    recipient = normalise_phone_number(account.get("phone_number") or "")
+    send_sms(recipient_phone=recipient, message=(
+        f"Glen Moniques staff OTP: {otp}. Expires in {OTP_EXPIRE_MINUTES} minutes. "
+        "Do not share this code."))
+
+
 def _send_staff_otp_email(
     *,
     account: dict,
@@ -786,10 +801,13 @@ def start_staff_otp_challenge(
 
     try:
 
-        _send_staff_otp_email(
-            account=account,
-            otp=otp,
-        )
+        provider = settings.staff_otp_provider.strip().lower()
+        if provider == "sms":
+            _send_staff_otp_sms(account=account, otp=otp)
+        elif provider == "email":
+            _send_staff_otp_email(account=account, otp=otp)
+        else:
+            raise RuntimeError("Unsupported STAFF_OTP_PROVIDER")
 
     except Exception:
 
@@ -856,13 +874,11 @@ def start_staff_otp_challenge(
             ]
         ),
 
+        "otp_delivery_method": settings.staff_otp_provider.strip().upper(),
         "otp_sent_to": (
-            _masked_email(
-                account.get(
-                    "email"
-                )
-                or ""
-            )
+            _masked_mobile(account.get("phone_number") or "")
+            if settings.staff_otp_provider.strip().lower() == "sms"
+            else _masked_email(account.get("email") or "")
         ),
 
         "otp_expires_in_minutes": (

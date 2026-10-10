@@ -117,6 +117,13 @@ class Settings(BaseSettings):
     # ========================================================
 
     redis_url: str | None = None
+
+    email_provider: str = "smtp"
+    resend_api_key: str | None = None
+    resend_from_email: str | None = None
+    bulksms_token_id: str | None = None
+    bulksms_token_secret: str | None = None
+    staff_otp_provider: str = "email"
     # ========================================================
     # GEMINI AI
     # ========================================================
