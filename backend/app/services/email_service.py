@@ -35,6 +35,42 @@ def _send_resend(*, recipient_email, subject, html_body, text_body=None, attachm
         with request.urlopen(req, timeout=20) as response:
             response.read()
     except error.HTTPError as exc:
+        # Log only a redacted Resend error, never the request, PDF or API token.
+        try:
+            import logging
+            import re
+
+            body = exc.read(2048).decode("utf-8", errors="replace")
+            try:
+                details = json.loads(body)
+            except (ValueError, TypeError):
+                details = {}
+
+            if not isinstance(details, dict):
+                details = {}
+
+            kind = str(details.get("name") or details.get("error") or "unknown")
+            message = str(details.get("message") or "No message provided")
+
+            def _redact(value):
+                value = re.sub(r"(?i)\bre_[A-Za-z0-9_-]+", "[redacted-key]", value)
+                value = re.sub(r"(?i)Bearer\s+\S+", "Bearer [redacted]", value)
+                value = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[redacted-email]", value)
+                value = re.sub(r"\b(?:\+?27|0)[0-9\s-]{8,15}\b", "[redacted-phone]", value)
+                value = re.sub(r"[\r\n\t]+", " ", value)
+                return value
+
+            logging.getLogger(__name__).warning(
+                "Resend HTTPS rejection: HTTP %s | type=%s | detail=%s",
+                exc.code,
+                _redact(kind)[:80],
+                _redact(message)[:220],
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Resend HTTPS rejection: HTTP %s | details unavailable",
+                exc.code,
+            )
         raise RuntimeError(f"Resend rejected email (HTTP {exc.code})") from None
     except error.URLError:
         raise RuntimeError("Resend HTTPS network failure") from None
