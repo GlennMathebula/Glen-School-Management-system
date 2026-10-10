@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.database import (
@@ -159,6 +160,22 @@ app = FastAPI(
         "Backend API for Glen Moniques"
     ),
     version="1.0.0",
+)
+
+# Glen Moniques Staff Desktop uses a registered secure Electron origin.
+# Keep this allowlist narrow; do not replace it with "*".
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "glenmoniques-staff://app",
+    ],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=[
+        "Content-Disposition",
+        "Content-Type",
+    ],
 )
 
 from app.staff_admissions_routes import (

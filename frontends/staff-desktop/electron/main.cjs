@@ -2,11 +2,70 @@ const {
   app,
   BrowserWindow,
   shell,
+  protocol,
+  net,
 } = require("electron");
 
 const path = require("path");
+const { pathToFileURL } = require("url");
 
 const isDev = process.argv.includes("--dev");
+const APP_SCHEME = "glenmoniques-staff";
+const APP_ORIGIN = "glenmoniques-staff://app";
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: APP_SCHEME,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+]);
+
+function registerAppProtocol() {
+  const distRoot = path.resolve(
+    __dirname,
+    "..",
+    "dist",
+  );
+
+  protocol.handle(
+    APP_SCHEME,
+    (request) => {
+      const requestUrl = new URL(request.url);
+      let relativePath = decodeURIComponent(
+        requestUrl.pathname || "/",
+      ).replace(/^\/+/, "");
+
+      if (!relativePath) {
+        relativePath = "index.html";
+      }
+
+      const candidate = path.resolve(
+        distRoot,
+        relativePath,
+      );
+
+      const insideDist =
+        candidate === path.join(distRoot, "index.html") ||
+        candidate.startsWith(distRoot + path.sep);
+
+      if (!insideDist) {
+        return new Response(
+          "Forbidden",
+          { status: 403 },
+        );
+      }
+
+      return net.fetch(
+        pathToFileURL(candidate).toString(),
+      );
+    },
+  );
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -42,18 +101,14 @@ function createWindow() {
       activate: false,
     });
   } else {
-    win.loadFile(
-      path.join(
-        __dirname,
-        "..",
-        "dist",
-        "index.html",
-      ),
+    win.loadURL(
+      `${APP_ORIGIN}/index.html`,
     );
   }
 }
 
 app.whenReady().then(() => {
+  registerAppProtocol();
   createWindow();
 
   app.on("activate", () => {
