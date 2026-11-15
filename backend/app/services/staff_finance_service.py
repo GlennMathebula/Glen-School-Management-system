@@ -160,29 +160,24 @@ def _ensure_account(
             "Student not found."
         )
 
-    connection.execute(
+    # Student login credentials are provisioned by student registration,
+    # not by finance. ON CONFLICT does not bypass NOT NULL constraints.
+    account_exists = connection.execute(
         text(
             """
-            INSERT INTO
-                public.student_accounts (
-                    student_number
-                )
-            VALUES (
-                :student_number
-            )
-            ON CONFLICT (
-                student_number
-            )
-            DO NOTHING
+            SELECT 1
+            FROM public.student_accounts
+            WHERE student_number = :student_number
+            LIMIT 1
             """
         ),
-        {
-            "student_number": (
-                student_number
-            )
-        },
-    )
-
+        {"student_number": student_number},
+    ).first()
+    if not account_exists:
+        raise ValueError(
+            "Student login account has not been provisioned. "
+            "Complete student account registration first."
+        )
 
 def recalculate_student_account(
     *,
