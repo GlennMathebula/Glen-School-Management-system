@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -108,3 +108,18 @@ class FinanceSponsorAssign(BaseModel):
         default=None,
         max_length=150,
     )
+
+
+class FinanceBulkAllocationItem(BaseModel):
+    student_number: str = Field(min_length=1, max_length=80)
+    amount_covered: Decimal = Field(gt=0, decimal_places=2)
+
+
+class FinanceBulkSponsorAssign(BaseModel):
+    sponsor_id: str = Field(min_length=3, max_length=80)
+    allocations: list[FinanceBulkAllocationItem] = Field(min_length=1, max_length=500)
+    reference: str | None = Field(default=None, max_length=150)
+
+
+class FinanceInvoiceCancel(BaseModel):
+    reason: str = Field(min_length=5, max_length=1000)

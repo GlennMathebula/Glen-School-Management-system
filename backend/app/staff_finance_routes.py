@@ -16,6 +16,9 @@ from app.models.staff_finance import (
     FinancePaymentPlanCreate,
     FinancePaymentReverse,
     FinanceSponsorAssign,
+    FinanceBulkSponsorAssign,
+    FinanceBulkAllocationItem,
+    FinanceInvoiceCancel,
     FinanceSponsorCreate,
 )
 from app.services.staff_finance_service import (
@@ -38,6 +41,13 @@ from app.services.staff_finance_service import (
     reverse_payment,
     run_finance_report,
     search_finance_students,
+)
+from app.services.staff_finance_bulk import (
+    bulk_assign_sponsor,
+    cancel_unpaid_invoice,
+    list_modern_student_invoices,
+    cancel_modern_unpaid_invoice,
+    list_sponsor_candidates,
 )
 from app.services.staff_permission_service import (
     require_permission,
@@ -593,21 +603,21 @@ def finance_sponsor_assign(
                 "Sponsor allocation created."
             ),
             "data": (
-                assign_sponsor(
+                bulk_assign_sponsor(
                     actor_staff_code=(
                         current_staff[
                             "staff_code"
                         ]
                     ),
-                    student_number=(
-                        student_number
-                    ),
                     sponsor_id=(
                         payload.sponsor_id
                     ),
-                    amount_covered=(
-                        payload.amount_covered
-                    ),
+                    allocations=[
+                        FinanceBulkAllocationItem(
+                            student_number=student_number,
+                            amount_covered=payload.amount_covered,
+                        )
+                    ],
                     reference=(
                         payload.reference
                     ),
@@ -855,3 +865,89 @@ def finance_statement_document(
                 error
             ),
         ) from error
+
+
+@router.post("/sponsors/bulk-assign")
+def finance_bulk_sponsor_assign(
+    payload: FinanceBulkSponsorAssign,
+    current_staff: dict = Depends(require_assign_sponsors),
+):
+    try:
+        result = bulk_assign_sponsor(
+            actor_staff_code=current_staff["staff_code"],
+            sponsor_id=payload.sponsor_id,
+            allocations=payload.allocations,
+            reference=payload.reference,
+        )
+        return {"success": True, "data": result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/students/{student_number}/invoices/{invoice_number}/cancel")
+@redis_guarded_endpoint(
+    "finance:student", key_fields=("student_number",), ttl_seconds=120,
+    busy_message="Another finance operation is processing for this learner.",
+    unavailable_message="Finance write protection unavailable; try again.", fail_open=False,
+)
+def finance_cancel_invoice(
+    student_number: str,
+    invoice_number: str,
+    payload: FinanceInvoiceCancel,
+    current_staff: dict = Depends(require_approve_adjustments),
+):
+    try:
+        result = cancel_unpaid_invoice(
+            actor_staff_code=current_staff["staff_code"],
+            student_number=student_number,
+            invoice_number=invoice_number,
+            reason=payload.reason,
+        )
+        return {"success": True, "data": result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/students/{student_number}/modern-invoices")
+def finance_list_modern_invoices(
+    student_number: str,
+    current_staff: dict = Depends(require_view_finance),
+):
+    try:
+        invoices = list_modern_student_invoices(student_number=student_number)
+        return {"success": True, "invoices": invoices, "count": len(invoices)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/students/{student_number}/modern-invoices/{invoice_number}/cancel")
+@redis_guarded_endpoint(
+    "finance:student", key_fields=("student_number",), ttl_seconds=120,
+    busy_message="Another finance update is in progress for this learner.",
+    unavailable_message="Finance write protection is unavailable.", fail_open=False,
+)
+def finance_cancel_modern_invoice(
+    student_number: str,
+    invoice_number: str,
+    payload: FinanceInvoiceCancel,
+    current_staff: dict = Depends(require_approve_adjustments),
+):
+    try:
+        result = cancel_modern_unpaid_invoice(
+            actor_staff_code=current_staff["staff_code"],
+            student_number=student_number, invoice_number=invoice_number,
+            reason=payload.reason,
+        )
+        return {"success": True, "data": result}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/sponsors/eligible-students")
+def finance_sponsor_candidates(
+    search: str | None = None,
+    limit: int = Query(default=500, ge=1, le=500),
+    current_staff: dict = Depends(require_view_finance),
+):
+    rows = list_sponsor_candidates(search=search, limit=limit)
+    return {"success": True, "count": len(rows), "students": rows}

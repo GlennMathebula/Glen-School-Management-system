@@ -1,5 +1,6 @@
 import {useEffect,useMemo,useState} from "react";
 import * as API from "./api";
+import FinanceEnhancements from "./FinanceEnhancements";
 
 const q=(o={})=>{
  const p=new URLSearchParams();
@@ -15,7 +16,7 @@ const h=s=>String(s??"")
  .replace(/\b\w/g,c=>c.toUpperCase());
 
 const v=x=>{
- if(x===null||x===undefined||x==="")return "—";
+ if(x===null||x===undefined||x==="")return "â€”";
  if(typeof x==="boolean")return x?"Yes":"No";
  if(typeof x==="object")return JSON.stringify(x);
  return String(x);
@@ -333,7 +334,7 @@ export function Compliance({token}){
 
   <Panel title="Assign Learner to Workplace">
    <div className="form-grid three">
-    <label><span>Learner</span><select value={pf.registration_id} onChange={e=>change(setPf,"registration_id",e.target.value)}><option value="">Select learner</option>{registrations.map(r=><option key={r.registration_id} value={r.registration_id}>{r.student_number} — {r.learner_name} — {r.course_code}</option>)}</select></label>
+    <label><span>Learner</span><select value={pf.registration_id} onChange={e=>change(setPf,"registration_id",e.target.value)}><option value="">Select learner</option>{registrations.map(r=><option key={r.registration_id} value={r.registration_id}>{r.student_number} â€” {r.learner_name} â€” {r.course_code}</option>)}</select></label>
     <label><span>Employer</span><input value={pf.employer_name} onChange={e=>change(setPf,"employer_name",e.target.value)}/></label>
     <label><span>Employer Reg No.</span><input value={pf.employer_reg_no} onChange={e=>change(setPf,"employer_reg_no",e.target.value)}/></label>
     <label><span>Workplace Address</span><input value={pf.workplace_address} onChange={e=>change(setPf,"workplace_address",e.target.value)}/></label>
@@ -352,7 +353,7 @@ export function Compliance({token}){
   <Panel title="Workplace Placements"><Tbl rows={placements.data?.placements||[]} cols={["student_number","learner_name","course_code","cycle_code","employer_name","supervisor_name","placement_start_date","placement_end_date","status"]} act={r=><Button onClick={()=>openPlacement(r)}>Manage</Button>}/></Panel>
 
   {selectedPlacement&&<>
-   <Panel title={`Placement — ${selectedPlacement.student_number}`} actions={<div className="button-row">{["Planned","Active","Completed","Terminated","Cancelled"].map(x=><Button key={x} onClick={()=>updatePlacementStatus(x)}>{x}</Button>)}</div>}><Tbl rows={[selectedPlacement]}/></Panel>
+   <Panel title={`Placement â€” ${selectedPlacement.student_number}`} actions={<div className="button-row">{["Planned","Active","Completed","Terminated","Cancelled"].map(x=><Button key={x} onClick={()=>updatePlacementStatus(x)}>{x}</Button>)}</div>}><Tbl rows={[selectedPlacement]}/></Panel>
 
    <div className="two-col">
     <Panel title="Workplace Attendance">
@@ -368,7 +369,7 @@ export function Compliance({token}){
    </div>
 
    <Panel title="Supervisor Reports">
-    <div className="form-grid three"><label><span>Supervisor Name</span><input id="v5-supervisor-name"/></label><label><span>Overall Rating (1–5)</span><input id="v5-supervisor-rating" type="number" min="1" max="5"/></label><label><span>Performance Comment</span><input id="v5-supervisor-comment"/></label></div>
+    <div className="form-grid three"><label><span>Supervisor Name</span><input id="v5-supervisor-name"/></label><label><span>Overall Rating (1â€“5)</span><input id="v5-supervisor-rating" type="number" min="1" max="5"/></label><label><span>Performance Comment</span><input id="v5-supervisor-comment"/></label></div>
     <button className="button gold" onClick={addSupervisorReport}>Add Supervisor Report</button>
     <Tbl rows={supervisorReports}/>
    </Panel>
@@ -376,9 +377,9 @@ export function Compliance({token}){
 
   <Panel title="Create Assessment Appeal">
    <div className="form-grid three">
-    <label><span>Learner</span><select value={af.registration_id} onChange={e=>loadAssessmentOptions(e.target.value)}><option value="">Select learner</option>{registrations.map(r=><option key={r.registration_id} value={r.registration_id}>{r.student_number} — {r.learner_name}</option>)}</select></label>
+    <label><span>Learner</span><select value={af.registration_id} onChange={e=>loadAssessmentOptions(e.target.value)}><option value="">Select learner</option>{registrations.map(r=><option key={r.registration_id} value={r.registration_id}>{r.student_number} â€” {r.learner_name}</option>)}</select></label>
     <label><span>Assessment Scope</span><select value={af.assessment_scope} onChange={e=>setAf(x=>({...x,assessment_scope:e.target.value,assessment_id:""}))}>{["Module","FISA","EISA"].map(x=><option key={x}>{x}</option>)}</select></label>
-    <label><span>Assessment</span><select value={af.assessment_id} onChange={e=>change(setAf,"assessment_id",e.target.value)}><option value="">Select assessment</option>{(af.assessment_scope==="Module"?assessmentOptions.marks:assessmentOptions.summatives.filter(x=>x.assessment_type===af.assessment_scope)).map(x=><option key={x.id} value={x.id}>{af.assessment_scope==="Module"?`${x.module_code} — Attempt ${x.attempt_number} — ${x.result||x.mark||""}`:`${x.assessment_type} — Attempt ${x.attempt_number} — ${x.result||x.mark||""}`}</option>)}</select></label>
+    <label><span>Assessment</span><select value={af.assessment_id} onChange={e=>change(setAf,"assessment_id",e.target.value)}><option value="">Select assessment</option>{(af.assessment_scope==="Module"?assessmentOptions.marks:assessmentOptions.summatives.filter(x=>x.assessment_type===af.assessment_scope)).map(x=><option key={x.id} value={x.id}>{af.assessment_scope==="Module"?`${x.module_code} â€” Attempt ${x.attempt_number} â€” ${x.result||x.mark||""}`:`${x.assessment_type} â€” Attempt ${x.attempt_number} â€” ${x.result||x.mark||""}`}</option>)}</select></label>
     <label><span>Lodged Date</span><input type="date" value={af.lodged_date} onChange={e=>change(setAf,"lodged_date",e.target.value)}/></label>
     <label><span>Reason</span><input value={af.reason} onChange={e=>change(setAf,"reason",e.target.value)}/></label>
    </div>
@@ -685,7 +686,7 @@ export function AcademicCalendar({token}){
    </div>
   </Panel>
 
-  <Panel title={`Academic Calendar Dates — ${calendarYear}`}>
+  <Panel title={`Academic Calendar Dates â€” ${calendarYear}`}>
    <Alert e={list.e}/>
 
    <Tbl
@@ -795,7 +796,7 @@ export function FinanceSetup({token}){
   <Alert {...st}/>
   <Panel title="Course Finance Configuration" text="The 2027 guide values are available as defaults; saving is still a deliberate action.">
    <div className="form-grid three">
-    <label><span>Course</span><select value={selected} onChange={e=>choose(e.target.value)}><option value="">Select course</option>{courses.map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} — {x.course_name}</option>)}</select></label>
+    <label><span>Course</span><select value={selected} onChange={e=>choose(e.target.value)}><option value="">Select course</option>{courses.map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} â€” {x.course_name}</option>)}</select></label>
     <label><span>Tuition Fee</span><input type="number" value={f.tuition_fee} onChange={e=>setF({...f,tuition_fee:e.target.value})}/></label>
     <label><span>Registration Deposit (guide)</span><input disabled value={selected?`R${registrationDeposit}`:""}/></label>
     <label><span>PPE Required</span><select value={f.ppe_required?"Yes":"No"} onChange={e=>setF({...f,ppe_required:e.target.value==="Yes"})}><option>No</option><option>Yes</option></select></label>
@@ -805,7 +806,7 @@ export function FinanceSetup({token}){
    <div className="button-row"><Button onClick={loadGuide}>Load 2027 Fee Guide</Button><button className="button gold" onClick={save}>Save Course Finance</button></div>
   </Panel>
 
-  {selected&&<Panel title={`Additional Fees — ${selected}`}>
+  {selected&&<Panel title={`Additional Fees â€” ${selected}`}>
    <div className="form-grid three">
     <label><span>Fee Name</span><input value={fee.fee_name} onChange={e=>setFee({...fee,fee_name:e.target.value})}/></label>
     <label><span>Fee Code</span><input value={fee.fee_code} onChange={e=>setFee({...fee,fee_code:e.target.value})}/></label>
@@ -1118,7 +1119,7 @@ export function AssessmentAdmin({token}){
 
   <Panel title="Create FISA Sitting">
    <div className="form-grid three">
-    <label><span>Course</span><select value={sf.course_code} onChange={e=>setSf({...sf,course_code:e.target.value})}><option value="">Select course</option>{(courses.data?.courses||[]).map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} — {x.course_name}</option>)}</select></label>
+    <label><span>Course</span><select value={sf.course_code} onChange={e=>setSf({...sf,course_code:e.target.value})}><option value="">Select course</option>{(courses.data?.courses||[]).map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} â€” {x.course_name}</option>)}</select></label>
     <label><span>Cycle</span><select value={sf.cycle_code} onChange={e=>setSf({...sf,cycle_code:e.target.value})}><option value="">No cycle</option>{(cycles.data?.cycles||[]).map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code}</option>)}</select></label>
     <label><span>Assessment Date</span><input type="date" value={sf.assessment_date} onChange={e=>setSf({...sf,assessment_date:e.target.value})}/></label>
     <label><span>Reporting Time</span><input type="time" value={sf.reporting_time} onChange={e=>setSf({...sf,reporting_time:e.target.value})}/></label>
@@ -1144,9 +1145,9 @@ export function AssessmentAdmin({token}){
    />
   </Panel>
 
-  {selectedFisa&&<Panel title={`FISA Candidates — ${selectedFisa.sitting_reference}`}>
+  {selectedFisa&&<Panel title={`FISA Candidates â€” ${selectedFisa.sitting_reference}`}>
    <div className="form-grid">
-    <label><span>Learner</span><select id="v5-fisa-reg"><option value="">Select learner</option>{(regs.data?.registrations||[]).filter(x=>x.course_code===selectedFisa.course_code&&(!selectedFisa.cycle_code||x.cycle_code===selectedFisa.cycle_code)).map(x=><option key={x.registration_id} value={x.registration_id}>{x.student_number} — {x.learner_name}</option>)}</select></label>
+    <label><span>Learner</span><select id="v5-fisa-reg"><option value="">Select learner</option>{(regs.data?.registrations||[]).filter(x=>x.course_code===selectedFisa.course_code&&(!selectedFisa.cycle_code||x.cycle_code===selectedFisa.cycle_code)).map(x=><option key={x.registration_id} value={x.registration_id}>{x.student_number} â€” {x.learner_name}</option>)}</select></label>
     <label><span>Seat Number</span><input id="v5-fisa-seat" type="number" min="1"/></label>
    </div>
    <button className="button gold" onClick={addFisaCandidate}>Add / Update Candidate</button>
@@ -1163,7 +1164,7 @@ export function AssessmentAdmin({token}){
 
   <Panel title="Create EISA Sitting">
    <div className="form-grid three">
-    <label><span>Course</span><select value={se.course_code} onChange={e=>setSe({...se,course_code:e.target.value})}><option value="">Select FISA + EISA course</option>{(courses.data?.courses||[]).filter(x=>x.assessment_type==="FISA_PLUS_EISA").map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} — {x.course_name}</option>)}</select></label>
+    <label><span>Course</span><select value={se.course_code} onChange={e=>setSe({...se,course_code:e.target.value})}><option value="">Select FISA + EISA course</option>{(courses.data?.courses||[]).filter(x=>x.assessment_type==="FISA_PLUS_EISA").map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} â€” {x.course_name}</option>)}</select></label>
     <label><span>Cycle</span><select value={se.cycle_code} onChange={e=>setSe({...se,cycle_code:e.target.value})}><option value="">No cycle</option>{(cycles.data?.cycles||[]).map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code}</option>)}</select></label>
     <label><span>Assessment Date</span><input type="date" value={se.assessment_date} onChange={e=>setSe({...se,assessment_date:e.target.value})}/></label>
     <label><span>Reporting Time</span><input type="time" value={se.reporting_time} onChange={e=>setSe({...se,reporting_time:e.target.value})}/></label>
@@ -1190,9 +1191,9 @@ export function AssessmentAdmin({token}){
    />
   </Panel>
 
-  {selectedEisa&&<Panel title={`EISA Candidates — ${selectedEisa.sitting_reference}`}>
+  {selectedEisa&&<Panel title={`EISA Candidates â€” ${selectedEisa.sitting_reference}`}>
    <div className="form-grid">
-    <label><span>EISA-Eligible Learner</span><select id="v5-eisa-reg"><option value="">Select learner</option>{(regs.data?.registrations||[]).filter(x=>x.eisa_eligible&&x.course_code===selectedEisa.course_code&&(!selectedEisa.cycle_code||x.cycle_code===selectedEisa.cycle_code)).map(x=><option key={x.registration_id} value={x.registration_id}>{x.student_number} — {x.learner_name}</option>)}</select></label>
+    <label><span>EISA-Eligible Learner</span><select id="v5-eisa-reg"><option value="">Select learner</option>{(regs.data?.registrations||[]).filter(x=>x.eisa_eligible&&x.course_code===selectedEisa.course_code&&(!selectedEisa.cycle_code||x.cycle_code===selectedEisa.cycle_code)).map(x=><option key={x.registration_id} value={x.registration_id}>{x.student_number} â€” {x.learner_name}</option>)}</select></label>
     <label><span>Seat Number</span><input id="v5-eisa-seat" type="number" min="1"/></label>
    </div>
    <button className="button gold" onClick={addEisaCandidate}>Allocate EISA Candidate</button>
@@ -1209,7 +1210,7 @@ export function AssessmentAdmin({token}){
 
   <Panel title="Capture Official EISA Outcome">
    <div className="form-grid three">
-    <label><span>Learner</span><select value={ef.student_number} onChange={e=>setEf({...ef,student_number:e.target.value})}><option value="">Select EISA learner</option>{(eisa.data?.learners||[]).filter(x=>x.eisa_eligible).map(x=><option key={x.student_number} value={x.student_number}>{x.student_number} — {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")} — {x.course_code}</option>)}</select></label>
+    <label><span>Learner</span><select value={ef.student_number} onChange={e=>setEf({...ef,student_number:e.target.value})}><option value="">Select EISA learner</option>{(eisa.data?.learners||[]).filter(x=>x.eisa_eligible).map(x=><option key={x.student_number} value={x.student_number}>{x.student_number} â€” {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")} â€” {x.course_code}</option>)}</select></label>
     <label><span>Attempt</span><input type="number" min="1" value={ef.attempt_number} onChange={e=>setEf({...ef,attempt_number:e.target.value})}/></label>
     <label><span>Mark</span><input type="number" min="0" max="100" value={ef.mark} onChange={e=>setEf({...ef,mark:e.target.value})}/></label>
     <label><span>Result</span><select value={ef.result} onChange={e=>setEf({...ef,result:e.target.value})}><option value="C">Competent</option><option value="NYC">Not Yet Competent</option></select></label>
@@ -1312,11 +1313,11 @@ export function LearningResources({token}){
  return <>
   <div className="page-title"><div><span className="eyebrow">Academic Delivery</span><h1>Learning Resources</h1><p>Create notes, links, upload files, publish/archive resources and generate AI study notes.</p></div></div>
   <Alert {...st}/>
-  <Panel title="Class"><select value={classCode} onChange={e=>chooseClass(e.target.value)}><option value="">Select class</option>{(classes.data?.classes||[]).map(x=><option key={x.class_code} value={x.class_code}>{x.class_code} — {x.class_name||x.course_code}</option>)}</select></Panel>
+  <Panel title="Class"><select value={classCode} onChange={e=>chooseClass(e.target.value)}><option value="">Select class</option>{(classes.data?.classes||[]).map(x=><option key={x.class_code} value={x.class_code}>{x.class_code} â€” {x.class_name||x.course_code}</option>)}</select></Panel>
   {classCode&&<>
    <Panel title="Create Resource">
     <div className="form-grid three">
-     <label><span>Module</span><select value={f.module_id} onChange={e=>setF({...f,module_id:e.target.value})}><option value="">General</option>{modules.map(x=><option key={x.module_id} value={x.module_id}>{x.module_code} — {x.module_name}</option>)}</select></label>
+     <label><span>Module</span><select value={f.module_id} onChange={e=>setF({...f,module_id:e.target.value})}><option value="">General</option>{modules.map(x=><option key={x.module_id} value={x.module_id}>{x.module_code} â€” {x.module_name}</option>)}</select></label>
      <label><span>Title</span><input value={f.title} onChange={e=>setF({...f,title:e.target.value})}/></label>
      <label><span>Description</span><input value={f.description} onChange={e=>setF({...f,description:e.target.value})}/></label>
      <label><span>Note Content</span><textarea value={f.content_text} onChange={e=>setF({...f,content_text:e.target.value})}/></label>
@@ -1395,7 +1396,7 @@ export function Delivery({token}){
   <div className="page-title"><div><span className="eyebrow">Academic Delivery</span><h1>Classes, Timetable & Attendance</h1><p>Operational Facilitator workspace.</p></div></div>
   <Alert {...st}/>
   <Panel title="Assigned Classes"><Tbl rows={classes.data?.classes||[]} act={r=><Button onClick={()=>openClass(r.class_code)}>Open Class</Button>}/></Panel>
-  {selectedClass&&<Panel title={`Learners — ${selectedClass}`}><Tbl rows={learners}/></Panel>}
+  {selectedClass&&<Panel title={`Learners â€” ${selectedClass}`}><Tbl rows={learners}/></Panel>}
   <Panel title="My Timetable"><Tbl rows={timetable.data?.sessions||timetable.data?.timetable||[]} act={r=><div className="button-row"><button className="button gold" onClick={()=>createAttendance(r)}>Take Attendance</button><Button onClick={async()=>{await send(token,`/api/staff/facilitator/timetable/${r.timetable_session_id||r.id}/notify-learners`,"POST");setSt({e:"",m:"Learners notified."})}}>Notify Learners</Button><Button onClick={async()=>{await send(token,`/api/staff/facilitator/timetable/${r.timetable_session_id||r.id}/sync-calendar`,"POST");setSt({e:"",m:"Session synced to Google Calendar."})}}>Sync Calendar</Button></div>}/></Panel>
   {roster&&<Panel title="Attendance Capture">
    <div className="table-wrap"><table><thead><tr><th>Student</th><th>Name</th><th>Status</th></tr></thead><tbody>{(roster.learners||roster.records||[]).map(r=><tr key={r.registration_id}><td>{r.student_number}</td><td>{r.learner_name||[r.first_name,r.middle_name,r.last_name].filter(Boolean).join(" ")}</td><td><select value={capture[r.registration_id]||r.attendance_status||"Present"} onChange={e=>setCapture(x=>({...x,[r.registration_id]:e.target.value}))}>{["Present","Absent","Late","Excused"].map(x=><option key={x}>{x}</option>)}</select></td></tr>)}</tbody></table></div>
@@ -1476,10 +1477,10 @@ export function Assessments({token}){
  return <>
   <div className="page-title"><div><span className="eyebrow">Assessment</span><h1>Assessment & Moderation</h1><p>Capture module/FISA results, submit for moderation, approve or return.</p></div></div>
   <Alert {...st}/>
-  <Panel title="Assessor — Module Queue"><Tbl rows={assessorModules.data?.data||[]} act={r=><div className="button-row"><input id={`mark-${r.module_registration_id}`} type="number" min="0" max="100" placeholder="Mark" style={{width:"90px"}}/><select id={`result-${r.module_registration_id}`}><option value="C">C</option><option value="NYC">NYC</option></select><button className="button gold" onClick={()=>captureModule(r)}>Capture & Submit</button></div>}/></Panel>
-  <Panel title="Assessor — FISA Queue"><Tbl rows={assessorSummative.data?.data||[]} act={r=><div className="button-row"><input id={`fisa-mark-${r.registration_id}`} type="number" min="0" max="100" placeholder="Mark" style={{width:"90px"}}/><select id={`fisa-result-${r.registration_id}`}><option value="C">C</option><option value="NYC">NYC</option></select><button className="button gold" onClick={()=>captureFisa(r)}>Capture & Submit</button></div>}/></Panel>
-  <Panel title="Moderator — Module Queue"><Tbl rows={moderatorModules.data?.data||[]} act={r=><div className="button-row"><button className="button gold" onClick={()=>moderate("module",r,"moderate")}>Approve</button><input id={`return-${r.id||r.mark_id}`} placeholder="Return reason"/><Button danger onClick={()=>moderate("module",r,"return")}>Return</Button></div>}/></Panel>
-  <Panel title="Moderator — FISA Queue"><Tbl rows={moderatorSummative.data?.data||[]} act={r=><div className="button-row"><button className="button gold" onClick={()=>moderate("summative",r,"moderate")}>Approve</button><input id={`return-${r.id||r.assessment_id}`} placeholder="Return reason"/><Button danger onClick={()=>moderate("summative",r,"return")}>Return</Button></div>}/></Panel>
+  <Panel title="Assessor â€” Module Queue"><Tbl rows={assessorModules.data?.data||[]} act={r=><div className="button-row"><input id={`mark-${r.module_registration_id}`} type="number" min="0" max="100" placeholder="Mark" style={{width:"90px"}}/><select id={`result-${r.module_registration_id}`}><option value="C">C</option><option value="NYC">NYC</option></select><button className="button gold" onClick={()=>captureModule(r)}>Capture & Submit</button></div>}/></Panel>
+  <Panel title="Assessor â€” FISA Queue"><Tbl rows={assessorSummative.data?.data||[]} act={r=><div className="button-row"><input id={`fisa-mark-${r.registration_id}`} type="number" min="0" max="100" placeholder="Mark" style={{width:"90px"}}/><select id={`fisa-result-${r.registration_id}`}><option value="C">C</option><option value="NYC">NYC</option></select><button className="button gold" onClick={()=>captureFisa(r)}>Capture & Submit</button></div>}/></Panel>
+  <Panel title="Moderator â€” Module Queue"><Tbl rows={moderatorModules.data?.data||[]} act={r=><div className="button-row"><button className="button gold" onClick={()=>moderate("module",r,"moderate")}>Approve</button><input id={`return-${r.id||r.mark_id}`} placeholder="Return reason"/><Button danger onClick={()=>moderate("module",r,"return")}>Return</Button></div>}/></Panel>
+  <Panel title="Moderator â€” FISA Queue"><Tbl rows={moderatorSummative.data?.data||[]} act={r=><div className="button-row"><button className="button gold" onClick={()=>moderate("summative",r,"moderate")}>Approve</button><input id={`return-${r.id||r.assessment_id}`} placeholder="Return reason"/><Button danger onClick={()=>moderate("summative",r,"return")}>Return</Button></div>}/></Panel>
  </>;
 }
 
@@ -1712,7 +1713,7 @@ export function HR({token}){
   </Panel>
 
   {selectedApp&&<>
-   <Panel title={`Application — ${selectedApp.application_number||selectedApp.id}`}>
+   <Panel title={`Application â€” ${selectedApp.application_number||selectedApp.id}`}>
     <Tbl rows={[appDetail?.application||appDetail||selectedApp]}/>
    </Panel>
 
@@ -1800,7 +1801,7 @@ export function Principal({token}){
   <Panel title="Overview"><Tbl rows={[overview.data?.data||overview.data||{}]}/></Panel>
   <Panel title="Staff"><Tbl rows={staff.data?.staff||[]} act={r=><Button onClick={()=>select(r)}>Manage</Button>}/></Panel>
   {selected&&<div className="two-col">
-   <Panel title={`Contact — ${selected.staff_code}`}>
+   <Panel title={`Contact â€” ${selected.staff_code}`}>
     <div className="form-grid"><label><span>Email</span><input value={contact.email} onChange={e=>setContact({...contact,email:e.target.value})}/></label><label><span>Cell</span><input value={contact.cell_number} onChange={e=>setContact({...contact,cell_number:e.target.value})}/></label><label><span>Phone</span><input value={contact.phone_number} onChange={e=>setContact({...contact,phone_number:e.target.value})}/></label></div>
     <button className="button gold" onClick={saveContact}>Save Contact</button>
    </Panel>
@@ -1834,7 +1835,7 @@ export function StudentCards({token}){
   <div className="page-title"><div><span className="eyebrow">Administration</span><h1>Student Card Centre</h1><p>Review and re-generate learner student cards.</p></div></div>
   <Alert {...st}/>
   <Panel title="Student"><div className="toolbar-grid"><input value={number} onChange={e=>setNumber(e.target.value.replace(/\D/g,"").slice(0,8))} placeholder="Student number"/><button className="button gold" onClick={load}>Load Card</button></div></Panel>
-  {card&&<Panel title={`Student Card — ${number}`} actions={<button className="button gold" onClick={()=>API.downloadFile(`/api/staff/desktop-v5/student-cards/${number}/pdf`,token,`${number}_Student_Card.pdf`)}>Generate / Save PDF</button>}><Tbl rows={[{student_number:card.student_number,full_name:card.full_name,course_code:card.course?.course_code,course_name:card.course?.course_name,cycle:card.registration?.cycle,registration_status:card.registration?.registration_status,card_status:card.card?.card_status,issued_date:card.card?.issued_date,expiry_date:card.card?.expiry_date}]}/></Panel>}
+  {card&&<Panel title={`Student Card â€” ${number}`} actions={<button className="button gold" onClick={()=>API.downloadFile(`/api/staff/desktop-v5/student-cards/${number}/pdf`,token,`${number}_Student_Card.pdf`)}>Generate / Save PDF</button>}><Tbl rows={[{student_number:card.student_number,full_name:card.full_name,course_code:card.course?.course_code,course_name:card.course?.course_name,cycle:card.registration?.cycle,registration_status:card.registration?.registration_status,card_status:card.card?.card_status,issued_date:card.card?.issued_date,expiry_date:card.card?.expiry_date}]}/></Panel>}
  </>;
 }
 
@@ -2075,7 +2076,7 @@ export function FinanceOperations({token}){
 
   {selected&&<>
    <Panel
-    title={`Learner Finance — ${selected}`}
+    title={`Learner Finance â€” ${selected}`}
     actions={<div className="button-row">
      <Button onClick={generateStatement}>Generate Statement</Button>
      <button className="button gold" onClick={()=>API.downloadFile(`/api/staff/finance/documents/statement/${selected}`,token,`${selected}_Statement.pdf`)}>Statement PDF</button>
@@ -2133,19 +2134,31 @@ export function FinanceOperations({token}){
     </div>
     <Tbl rows={payments} act={r=><Button danger onClick={()=>reversePayment(r)}>Reverse</Button>}/>
    </Panel>
-   <Panel title="Invoices"><Tbl rows={invoices} act={r=>r.invoice_number?<Button onClick={()=>API.downloadFile(`/api/staff/finance/documents/invoice/${r.invoice_number}`,token,`${r.invoice_number}.pdf`)}>PDF</Button>:null}/></Panel>
+   <Panel title="Invoices"><Tbl rows={invoices} act={r=>r.invoice_number?<div className="button-row">
+    <Button onClick={()=>API.downloadFile(`/api/staff/finance/documents/invoice/${r.invoice_number}`,token,`${r.invoice_number}.pdf`)}>PDF</Button>
+    {!["Cancelled","Paid","Partially Paid"].includes(r.status)&&<Button danger onClick={async()=>{
+      const reason=window.prompt(`Reason for cancelling ${r.invoice_number}:`);
+      if(!reason)return;
+      if(!window.confirm(`Cancel ${r.invoice_number}? The invoice remains in the audit history.`))return;
+      try{await send(token,`/api/staff/finance/students/${selected}/invoices/${encodeURIComponent(r.invoice_number)}/cancel`,"POST",{reason});
+        setSt({e:"",m:`Invoice ${r.invoice_number} cancelled.`});await refresh();
+      }catch(e){setSt({e:e.message,m:""});}
+    }}>Cancel</Button>}
+   </div>:null}/></Panel>
    <Panel title="Receipts"><Tbl rows={receipts} act={r=>r.receipt_number?<Button onClick={()=>API.downloadFile(`/api/staff/finance/documents/receipt/${r.receipt_number}`,token,`${r.receipt_number}.pdf`)}>PDF</Button>:null}/></Panel>
    <Panel title="Statements"><Tbl rows={statements}/></Panel>
 
    <Panel title="Assign Sponsor">
     <div className="form-grid three">
-     <label><span>Sponsor</span><select value={assignSponsor.sponsor_id} onChange={e=>setAssignSponsor({...assignSponsor,sponsor_id:e.target.value})}><option value="">Select sponsor</option>{(sponsors.data?.sponsors||[]).map(x=><option key={x.id||x.sponsor_id} value={x.id||x.sponsor_id}>{x.sponsor_name} — {x.sponsor_type}</option>)}</select></label>
+     <label><span>Sponsor</span><select value={assignSponsor.sponsor_id} onChange={e=>setAssignSponsor({...assignSponsor,sponsor_id:e.target.value})}><option value="">Select sponsor</option>{(sponsors.data?.sponsors||[]).map(x=><option key={x.id||x.sponsor_id} value={x.sponsor_id}>{x.sponsor_name} â€” {x.sponsor_type}</option>)}</select></label>
      <label><span>Amount Covered</span><input type="number" value={assignSponsor.amount_covered} onChange={e=>setAssignSponsor({...assignSponsor,amount_covered:e.target.value})}/></label>
      <label><span>Reference</span><input value={assignSponsor.reference} onChange={e=>setAssignSponsor({...assignSponsor,reference:e.target.value})}/></label>
     </div>
     <button className="button gold" onClick={assignSponsorToStudent}>Assign Sponsor</button>
    </Panel>
   </>}
+
+  <FinanceEnhancements selectedStudent={selected} token={token} sponsors={sponsors.data?.sponsors||[]} selectedStudent={selected} onAllocated={()=>{sponsors.refresh();findStudents();refresh();}}/>
 
   <Panel title="Create Sponsor">
    <div className="form-grid three">
@@ -2537,13 +2550,13 @@ export function AssessmentAdminV54({token}){
   </Panel>
 
   <Panel
-   title="Create FISA Sitting — Automatic Classroom Allocation"
+   title="Create FISA Sitting â€” Automatic Classroom Allocation"
    text="The system selects all FISA-outstanding learners in the selected course/cycle, chooses enough available classrooms, and allocates seats automatically. Every used classroom must meet the configured female minimum."
   >
    <div className="form-grid three">
-    <label><span>Course</span><select value={sf.course_code} onChange={e=>{setSf({...sf,course_code:e.target.value});setPlan(null)}}><option value="">Select course</option>{(courses.data?.courses||[]).map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} — {x.course_name}</option>)}</select></label>
+    <label><span>Course</span><select value={sf.course_code} onChange={e=>{setSf({...sf,course_code:e.target.value});setPlan(null)}}><option value="">Select course</option>{(courses.data?.courses||[]).map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} â€” {x.course_name}</option>)}</select></label>
 
-    <label><span>Cycle</span><select value={sf.cycle_code} onChange={e=>{setSf({...sf,cycle_code:e.target.value});setPlan(null)}}><option value="">Select cycle</option>{(cycles.data?.cycles||[]).map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code} — {x.cycle_name||""}</option>)}</select></label>
+    <label><span>Cycle</span><select value={sf.cycle_code} onChange={e=>{setSf({...sf,cycle_code:e.target.value});setPlan(null)}}><option value="">Select cycle</option>{(cycles.data?.cycles||[]).map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code} â€” {x.cycle_name||""}</option>)}</select></label>
 
     <label><span>Assessment Centre</span><select value={sf.assessment_centre} onChange={e=>{setSf({...sf,assessment_centre:e.target.value});setPlan(null)}}><option value="">Select centre</option>{centres.map(x=><option key={x}>{x}</option>)}</select></label>
 
@@ -2566,9 +2579,9 @@ export function AssessmentAdminV54({token}){
 
    {plan&&<>
     <div className={`alert ${plan.feasible?"success":"error"}`} style={{marginTop:"16px"}}>
-     Eligible learners: {plan.eligible_total} • Females: {plan.female_total} ({plan.female_percentage}%) • Female seats required: {plan.female_required} • Selected classrooms: {plan.selected_room_count} • Capacity: {plan.selected_capacity}
-     {!plan.capacity_ok&&<> • Not enough seats</>}
-     {!plan.female_quota_ok&&<> • Female shortage: {plan.female_shortage}</>}
+     Eligible learners: {plan.eligible_total} â€¢ Females: {plan.female_total} ({plan.female_percentage}%) â€¢ Female seats required: {plan.female_required} â€¢ Selected classrooms: {plan.selected_room_count} â€¢ Capacity: {plan.selected_capacity}
+     {!plan.capacity_ok&&<> â€¢ Not enough seats</>}
+     {!plan.female_quota_ok&&<> â€¢ Female shortage: {plan.female_shortage}</>}
     </div>
 
     <Tbl
@@ -2611,7 +2624,7 @@ export function AssessmentAdminV54({token}){
   </Panel>
 
   {selectedFisa&&<>
-   <Panel title={`Classroom Allocation — ${selectedFisa.sitting_reference}`}>
+   <Panel title={`Classroom Allocation â€” ${selectedFisa.sitting_reference}`}>
     <Tbl
      rows={fisaRoomSummary}
      cols={[
@@ -2630,7 +2643,7 @@ export function AssessmentAdminV54({token}){
     />
    </Panel>
 
-   <Panel title={`Candidate Seating — ${selectedFisa.sitting_reference}`}>
+   <Panel title={`Candidate Seating â€” ${selectedFisa.sitting_reference}`}>
     <Tbl
      rows={fisaCandidates}
      cols={[
@@ -2650,7 +2663,7 @@ export function AssessmentAdminV54({token}){
 
   <Panel title="Create EISA Sitting">
    <div className="form-grid three">
-    <label><span>Course</span><select value={se.course_code} onChange={e=>setSe({...se,course_code:e.target.value})}><option value="">Select FISA + EISA course</option>{(courses.data?.courses||[]).filter(x=>x.assessment_type==="FISA_PLUS_EISA").map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} — {x.course_name}</option>)}</select></label>
+    <label><span>Course</span><select value={se.course_code} onChange={e=>setSe({...se,course_code:e.target.value})}><option value="">Select FISA + EISA course</option>{(courses.data?.courses||[]).filter(x=>x.assessment_type==="FISA_PLUS_EISA").map(x=><option key={x.course_code} value={x.course_code}>{x.course_code} â€” {x.course_name}</option>)}</select></label>
     <label><span>Cycle</span><select value={se.cycle_code} onChange={e=>setSe({...se,cycle_code:e.target.value})}><option value="">No cycle</option>{(cycles.data?.cycles||[]).map(x=><option key={x.cycle_code} value={x.cycle_code}>{x.cycle_code}</option>)}</select></label>
     <label><span>Assessment Date</span><input type="date" value={se.assessment_date} onChange={e=>setSe({...se,assessment_date:e.target.value})}/></label>
     <label><span>Reporting Time</span><input type="time" value={se.reporting_time} onChange={e=>setSe({...se,reporting_time:e.target.value})}/></label>
@@ -2682,13 +2695,13 @@ export function AssessmentAdminV54({token}){
    />
   </Panel>
 
-  {selectedEisa&&<Panel title={`EISA Candidates — ${selectedEisa.sitting_reference}`}>
+  {selectedEisa&&<Panel title={`EISA Candidates â€” ${selectedEisa.sitting_reference}`}>
    <Tbl rows={eisaCandidates}/>
   </Panel>}
 
   <Panel title="Capture Official EISA Outcome">
    <div className="form-grid three">
-    <label><span>Learner</span><select value={ef.student_number} onChange={e=>setEf({...ef,student_number:e.target.value})}><option value="">Select EISA learner</option>{(eisa.data?.learners||[]).filter(x=>x.eisa_eligible).map(x=><option key={x.student_number} value={x.student_number}>{x.student_number} — {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")} — {x.course_code}</option>)}</select></label>
+    <label><span>Learner</span><select value={ef.student_number} onChange={e=>setEf({...ef,student_number:e.target.value})}><option value="">Select EISA learner</option>{(eisa.data?.learners||[]).filter(x=>x.eisa_eligible).map(x=><option key={x.student_number} value={x.student_number}>{x.student_number} â€” {[x.first_name,x.middle_name,x.last_name].filter(Boolean).join(" ")} â€” {x.course_code}</option>)}</select></label>
     <label><span>Attempt</span><input type="number" min="1" value={ef.attempt_number} onChange={e=>setEf({...ef,attempt_number:e.target.value})}/></label>
     <label><span>Mark</span><input type="number" min="0" max="100" value={ef.mark} onChange={e=>setEf({...ef,mark:e.target.value})}/></label>
     <label><span>Result</span><select value={ef.result} onChange={e=>setEf({...ef,result:e.target.value})}><option value="C">Competent</option><option value="NYC">Not Yet Competent</option></select></label>

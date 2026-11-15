@@ -2006,8 +2006,7 @@ def assign_sponsor(
                 """
                 SELECT *
                 FROM public.sponsors
-                WHERE sponsor_id =
-                    :sponsor_id
+                WHERE (sponsor_id = :sponsor_id OR id::text = :sponsor_id)
                   AND status = 'Active'
                 LIMIT 1
                 FOR UPDATE
@@ -2022,6 +2021,8 @@ def assign_sponsor(
             raise ValueError(
                 "Active sponsor not found."
             )
+
+        sponsor_id = sponsor["sponsor_id"]
 
         remaining = _money(
             sponsor[
