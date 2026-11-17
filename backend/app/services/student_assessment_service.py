@@ -329,6 +329,61 @@ def get_student_assessment_status(
         )
     )
 
+
+    # Digital FISA is authoritative for a matching course/cycle. Never expose a
+    # legacy result while a digital sitting exists but has not been published.
+    with engine.connect() as digital_connection:
+        digital_row = digital_connection.execute(
+            text("""
+                SELECT s.id AS sitting_id, s.assessment_date,
+                       s.qa_report_path, s.marking_method, x.status AS script_status,
+                       x.rendered_outcome, x.rendered_percentage, x.approved_at, x.published_at
+                FROM public.gm_fisa_sittings s
+                LEFT JOIN public.gm_fisa_scripts x
+                  ON x.sitting_id = s.id AND x.student_number = :number
+                WHERE s.course_code = :course AND s.cycle = :cycle
+                ORDER BY s.assessment_date DESC, s.created_at DESC
+                LIMIT 1
+            """),
+            {
+                "number": student_number,
+                "course": registration["course_code"],
+                "cycle": registration["cycle"],
+            },
+        ).mappings().first()
+    if digital_row is not None:
+        digital_status = digital_row["script_status"]
+        released = bool(
+            digital_status == "Published"
+            and digital_row["qa_report_path"]
+            and digital_row["approved_at"]
+            and digital_row["published_at"]
+            and (
+                (digital_row["marking_method"] == "competency" and digital_row["rendered_outcome"] in {"C", "NYC"})
+                or (digital_row["marking_method"] == "percentage" and digital_row["rendered_outcome"] in {"Pass", "Fail"} and digital_row["rendered_percentage"] is not None)
+            )
+        )
+        stage_by_status = {
+            None: "Awaiting FISA Script Upload",
+            "Submitted": "Awaiting Assessor Marking",
+            "Assessed": "Awaiting Moderation",
+            "Moderated": "Awaiting Marks Rendering",
+            "Rendered": "Awaiting Internal Approval",
+            "Internally Approved": "Waiting QCTO QA / Publication",
+            "Returned": "Assessment Under Review",
+            "Published": "Published" if released else "Results Under Review",
+        }
+        fisa = {
+            "assessment_type": "FISA",
+            "captured": digital_status is not None,
+            "stage": stage_by_status.get(digital_status, "FISA Processing"),
+            "published": released,
+            "attempt_number": None,
+            "mark": float(digital_row["rendered_percentage"]) if released and digital_row["marking_method"] == "percentage" else None,
+            "result": digital_row["rendered_outcome"] if released else None,
+            "assessment_date": str(digital_row["assessment_date"]) if released else None,
+        }
+
     requires_eisa = (
         registration[
             "assessment_type"

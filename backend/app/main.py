@@ -1,3 +1,4 @@
+from app.fisa_digital_routes import router as fisa_digital_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
@@ -209,6 +210,8 @@ app.include_router(
 # ============================================================
 # ROUTERS
 # ============================================================
+
+app.include_router(fisa_digital_router)
 
 app.include_router(
     core_router

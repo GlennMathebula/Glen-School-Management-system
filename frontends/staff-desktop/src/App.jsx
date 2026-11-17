@@ -1,4 +1,5 @@
-﻿import {
+import FisaDigitalStaff from "./FisaDigitalStaff";
+import {
   useEffect,
   useMemo,
   useState,
@@ -2648,9 +2649,12 @@ function DesktopShell() {
             <Route
               path="/assessments"
               element={
-                <V5.Assessments
-                  token={auth.token}
-                />
+                <>
+                  <V5.Assessments
+                    token={auth.token}
+                  />
+                  <FisaDigitalStaff token={auth.token} />
+                </>
               }
             />
 
@@ -2738,9 +2742,12 @@ function DesktopShell() {
             <Route
               path="/assessment-admin"
               element={
-                <V5.AssessmentAdminV54
-                  token={auth.token}
-                />
+                <>
+                  <V5.AssessmentAdminV54
+                    token={auth.token}
+                  />
+                  <FisaDigitalStaff token={auth.token} admin />
+                </>
               }
             />
 
