@@ -1607,6 +1607,43 @@ def _registration_window_status(
     }
 
 
+# GM_EDP_MANUAL_DOCUMENTS_V1_BEGIN
+# The manual-document exception is deliberately restricted to one 2026/27
+# EDP intake. It does not change student_documents or course requirements.
+EDP_PHYSICAL_DOCUMENT_CYCLE = "2026/27-EDP"
+EDP_PHYSICAL_DOCUMENT_COURSE = "SP-210401"
+
+
+def _validate_edp_physical_document_exception(
+    application: dict,
+    defaults: dict,
+    *,
+    enforce_documents: bool,
+    manual_documents_note: str | None,
+) -> str | None:
+    if enforce_documents:
+        return None
+    if (
+        application.get("application_cycle") != EDP_PHYSICAL_DOCUMENT_CYCLE
+        or application.get("qualification_id") != EDP_PHYSICAL_DOCUMENT_COURSE
+        or defaults.get("cycle_code") != EDP_PHYSICAL_DOCUMENT_CYCLE
+        or defaults.get("course_code") != EDP_PHYSICAL_DOCUMENT_COURSE
+    ):
+        raise ValueError(
+            "Physical-document acceptance is limited to EDP cycle "
+            "2026/27-EDP and course SP-210401. Other applications "
+            "must have their required uploaded documents approved."
+        )
+    note = (manual_documents_note or "").strip()
+    if len(note) < 10:
+        raise ValueError(
+            "Confirm the original physical documents were checked and "
+            "provide their physical file location/reference (at least 10 characters)."
+        )
+    return note
+# GM_EDP_MANUAL_DOCUMENTS_V1_END
+
+
 @redis_guarded_call("admissions:accept", key_fields=("student_number",), ttl_seconds=120, busy_message="This application acceptance is already being processed.", fail_open=False)
 def accept_application(
     student_number: str,
@@ -1617,6 +1654,7 @@ def accept_application(
     expected_completion_date: date | None,
     enforce_documents: bool,
     actor: str,
+    manual_documents_note: str | None = None,
 ) -> dict:
     application = _application(
         student_number
@@ -1687,6 +1725,38 @@ def accept_application(
             "registration": None,
             "registration_defaults": defaults,
         }
+
+    # The normal checklist remains unchanged. Staff must explicitly attest to
+    # physical documents, and that evidence must be saved BEFORE acceptance.
+    physical_file_reference = _validate_edp_physical_document_exception(
+        application,
+        defaults,
+        enforce_documents=enforce_documents,
+        manual_documents_note=manual_documents_note,
+    )
+    if physical_file_reference is not None:
+        # Strict audit: if we cannot retain the physical-file attestation,
+        # fail closed instead of silently accepting an undocumented learner.
+        create_staff_audit_log(
+            actor_staff_code=actor,
+            action_code="EDP_PHYSICAL_DOCUMENTS_CONFIRMED",
+            module_code="ADMISSIONS",
+            entity_type="APPLICATION",
+            entity_id=str(application["id"]),
+            description=(
+                "Staff attested that original EDP application documents "
+                "were received/checked and retained in physical files. "
+                "Digital upload requirement waived for acceptance only."
+            ),
+            metadata={
+                "cycle_code": defaults["cycle_code"],
+                "course_code": defaults["course_code"],
+                "physical_file_reference": physical_file_reference,
+                "digital_upload_requirement_waived": True,
+                "digital_document_approval_not_asserted": True,
+                "outstanding_uploaded_documents": checklist["blocking_documents"],
+            },
+        )
 
     status_result = (
         change_application_status(

@@ -63,6 +63,8 @@ class BulkAcceptRequest(
     ) = None
 
     enforce_documents: bool = True
+    # GM_EDP_MANUAL_DOCUMENTS_V1
+    manual_documents_note: str | None = Field(default=None, max_length=500)
 
 
 class BulkRejectRequest(
@@ -135,6 +137,7 @@ def bulk_accept_applications(
                 enforce_documents=(
                     payload.enforce_documents
                 ),
+                manual_documents_note=payload.manual_documents_note,
                 actor=current_staff[
                     "staff_code"
                 ],

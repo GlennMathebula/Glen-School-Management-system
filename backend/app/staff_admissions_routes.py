@@ -278,6 +278,7 @@ def admin_accept_application(
             enforce_documents=(
                 payload.enforce_documents
             ),
+            manual_documents_note=payload.manual_documents_note,
             actor=current_staff[
                 "staff_code"
             ],

@@ -31,7 +31,11 @@ export function Admissions({token}){
  const[bulkResult,setBulkResult]=useState([]);
 
  const list=useGet(path,token);
- const applications=list.data?.applications||[];
+  const applications=list.data?.applications||[];
+  // GM_EDP_MANUAL_DOCUMENTS_V1: staff action; server revalidates EDP scope.
+  const edpRow=r=>r?.cycle_code==="2026/27-EDP"&&r?.course_code==="SP-210401";
+  const selectedOnlyEdp=selected.length>0&&selected.every(n=>applications.some(r=>r.student_number===n&&edpRow(r)));
+  const edpDetail=detail?.application?.student_number===sel&&detail?.application?.application_cycle==="2026/27-EDP"&&detail?.application?.qualification_id==="SP-210401";
 
  const closePreview=()=>{
   if(preview?.url){
@@ -126,7 +130,19 @@ export function Admissions({token}){
   );
  };
 
- const reject=()=>{
+  const acceptEdpPhysical=()=>{
+   if(!sel||!edpDetail)return;
+   const ref=window.prompt("EDP physical documents: confirm you checked and retained the learner's documents. Enter the physical file location/reference (minimum 10 characters):", "EDP 2026/27 physical learner files");
+   if(ref===null)return;
+   if(ref.trim().length<10){setSt({e:"Provide the physical file location/reference (at least 10 characters).",m:""});return;}
+   if(!window.confirm("Confirm physical documents were received and checked for this EDP learner? The learner will be accepted WITHOUT digitally uploaded documents. This does not register the learner."))return;
+   doPost(`/api/staff/admissions/applications/${sel}/accept`,{
+    funding_type:null,cycle_code:null,program_start_date:null,expected_completion_date:null,
+    enforce_documents:false,manual_documents_note:ref.trim()
+   },"EDP application accepted using physical-document attestation. Registration remains separate.");
+  };
+
+  const reject=()=>{
   if(!sel)return;
 
   const reason=prompt(
@@ -310,7 +326,26 @@ export function Admissions({token}){
   }
  };
 
- const bulkAccept=async()=>{
+  const bulkAcceptEdpPhysical=async()=>{
+   if(!selectedOnlyEdp){setSt({e:"Select only learners from 2026/27-EDP, SP-210401.",m:""});return;}
+   const ref=window.prompt(`Confirm physical documents were checked and filed for EACH of the ${selected.length} selected EDP learners. Enter their physical file location/reference:`,"EDP 2026/27 physical learner files");
+   if(ref===null)return;
+   if(ref.trim().length<10){setSt({e:"Provide the physical file location/reference (at least 10 characters).",m:""});return;}
+   if(!window.confirm(`Accept ${selected.length} EDP learner(s) using physical-document records? Each learner's action will be audited separately. Registration remains separate.`))return;
+   try{
+    const result=await send(token,"/api/staff/admissions/bulk/accept","POST",{
+     student_numbers:selected,funding_type:null,cycle_code:null,
+     program_start_date:null,expected_completion_date:null,
+     enforce_documents:false,manual_documents_note:ref.trim()
+    });
+    setBulkResult(result.results||[]);
+    setSt({e:"",m:`EDP physical-document acceptance: ${result.success_count} successful, ${result.failure_count} failed.`});
+    setSelected([]);list.refresh();
+    if(sel)await open(sel);
+   }catch(e){setSt({e:e.message,m:""});}
+  };
+
+  const bulkAccept=async()=>{
   if(!selected.length){
    setSt({
     e:"Select at least one application.",
@@ -501,14 +536,14 @@ export function Admissions({token}){
   </div>
  </Panel>
 
- <Panel title={`Applications (${applications.length})`} text={`${selected.length} application(s) selected.`} actions={<div className="button-row"><button className="button gold" disabled={!selected.length} onClick={bulkAccept}>Accept Selected</button><Button danger onClick={bulkReject}>Reject Selected</Button><Button onClick={list.refresh}>Refresh</Button></div>}>
+ <Panel title={`Applications (${applications.length})`} text={`${selected.length} application(s) selected.`} actions={<div className="button-row"><button className="button gold" disabled={!selected.length} onClick={bulkAccept}>Accept Selected</button>{selectedOnlyEdp&&<Button onClick={bulkAcceptEdpPhysical}>Accept Selected (EDP Physical Documents)</Button>}<Button danger onClick={bulkReject}>Reject Selected</Button><Button onClick={list.refresh}>Refresh</Button></div>}>
   <Alert e={list.e}/>
   {!applications.length?<div className="empty">No applications found.</div>:<div className="table-wrap"><table><thead><tr><th><input type="checkbox" checked={applications.length>0&&applications.every(x=>selected.includes(x.student_number))} onChange={toggleAll}/></th><th>Student Number</th><th>Name</th><th>Course</th><th>Cycle</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody>{applications.map(r=><tr key={r.student_number}><td><input type="checkbox" checked={selected.includes(r.student_number)} onChange={()=>toggleSelected(r.student_number)}/></td><td>{v(r.student_number)}</td><td>{[r.first_name,r.middle_name,r.last_name].filter(Boolean).join(" ")}</td><td>{v(r.course_code||r.qualification_id)}</td><td>{v(r.cycle_code)}</td><td><span className="badge">{v(r.app_status)}</span></td><td>{v(r.created_at)}</td><td><Button onClick={()=>open(r.student_number)}>Open</Button></td></tr>)}</tbody></table></div>}
  </Panel>
 
  {bulkResult.length>0&&<Panel title="Bulk Action Results" text="Each learner is processed separately so one failure does not hide successful records."><Tbl rows={bulkResult.map(x=>({student_number:x.student_number,status:x.success?"Success":"Failed",message:x.message||x.error||""}))} cols={["student_number","status","message"]}/></Panel>}
 
- {sel&&<><Panel title={`Application ${sel}`} actions={<div className="button-row"><button className="button gold" onClick={accept}>Accept Application</button><Button danger onClick={reject}>Reject</Button><Button onClick={registerLearner}>Register Learner</Button></div>}><Obj data={detail?.application||detail||{}}/></Panel>
+ {sel&&<><Panel title={`Application ${sel}`} actions={<div className="button-row"><button className="button gold" onClick={accept}>Accept Application</button>{edpDetail&&<Button onClick={acceptEdpPhysical}>Accept (EDP Physical Documents)</Button>}<Button danger onClick={reject}>Reject</Button><Button onClick={registerLearner}>Register Learner</Button></div>}><Obj data={detail?.application||detail||{}}/></Panel>
 
  <Panel title="Uploaded Documents & Review" text="Preview the actual uploaded PDF/JPG/PNG before approving, rejecting or requesting a corrected re-upload.">
   {!docs.length?<div className="empty">No document requirements are configured for this application.</div>:<div className="table-wrap"><table><thead><tr><th>Document</th><th>Required</th><th>Stage</th><th>Uploaded File</th><th>Review Status</th><th>Request Status</th><th>Actions</th></tr></thead><tbody>{docs.map((row,i)=>{const doc=row.document||null;const req=row.request||null;return <tr key={`${row.document_type}-${i}`}><td>{v(row.document_label||row.document_type)}</td><td>{row.is_required?"Yes":"No"}</td><td>{v(row.trigger_stage)}</td><td>{doc?v(doc.original_filename):"Not uploaded"}</td><td><span className="badge">{v(doc?.review_status||"Not Uploaded")}</span></td><td><span className="badge">{v(req?.status||"—")}</span></td><td><div className="button-row">{doc&&<Button onClick={()=>previewDocument(row)}>Preview</Button>}{doc&&<Button onClick={()=>review(row,"Approved")}>Approve</Button>}{doc&&<Button danger onClick={()=>review(row,"Rejected")}>Reject</Button>}{doc&&<Button onClick={()=>review(row,"Resubmission Required")}>Request Re-upload</Button>}</div></td></tr>})}</tbody></table></div>}
