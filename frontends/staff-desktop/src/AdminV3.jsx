@@ -488,6 +488,8 @@ export function Admissions({token}){
 
  return <><div className="page-title"><div><span className="eyebrow">Admissions</span><h1>Applications & Registration</h1><p>Preview and review uploaded documents, request missing evidence, accept applications, and register accepted learners during the configured registration window.</p></div></div><Alert {...st}/>
 
+ <ReturningAdmissionsPanel token={token}/>
+
  <Panel title="Search & Filter">
   <div className="toolbar-grid">
    <input placeholder="Student number, name or email" value={search} onChange={e=>setSearch(e.target.value)}/>
@@ -522,6 +524,53 @@ export function Admissions({token}){
   {!requestable.length?<div className="empty">There are no currently missing configured documents to request.</div>:<><div className="table-wrap"><table><thead><tr><th>Select</th><th>Document</th><th>Required</th><th>Stage</th></tr></thead><tbody>{requestable.map(row=><tr key={row.document_type}><td><input type="checkbox" checked={requestSelected.includes(row.document_type)} onChange={()=>toggleRequest(row.document_type)}/></td><td>{v(row.document_label||row.document_type)}</td><td>{row.is_required?"Yes":"No"}</td><td>{v(row.trigger_stage)}</td></tr>)}</tbody></table></div><div className="form-grid"><label><span>Reason</span><input value={requestReason} onChange={e=>setRequestReason(e.target.value)} placeholder="Why the document is required"/></label><label><span>Due Date</span><input type="date" value={requestDueDate} onChange={e=>setRequestDueDate(e.target.value)}/></label><label><span>Instructions</span><input value={requestInstructions} onChange={e=>setRequestInstructions(e.target.value)} placeholder="Upload instructions"/></label></div><button className="button gold" onClick={requestDocuments}>Request Selected Documents</button></>}
  </Panel></>}</>
 }
+
+
+// GLEN_RETURNING_ADMISSIONS_V1_BEGIN
+function ReturningAdmissionsPanel({token}){
+ const [filter,setFilter]=useState("");
+ const queue=useGet("/api/staff/admissions/returning-applications"+q({status:filter,limit:100}),token);
+ const [chosen,setChosen]=useState(null);
+ const [note,setNote]=useState("");
+ const [busy,setBusy]=useState(false);
+ const [notice,setNotice]=useState({e:"",m:""});
+ const records=queue.data?.applications||[];
+ const selection=chosen&&records.find(row=>row.id===chosen.id);
+ const pick=row=>{setChosen(row);setNote(row.review_note||"");setNotice({e:"",m:""});};
+ const change=async(nextStatus)=>{
+  if(!selection||busy)return;
+  if(nextStatus==="Rejected"&&!note.trim()){
+   setNotice({e:"Enter a reason before rejecting the application.",m:""});return;
+  }
+  if(nextStatus==="Rejected"&&!window.confirm("Reject this returning application?"))return;
+  setBusy(true);setNotice({e:"",m:""});
+  try{
+   await send(token,`/api/staff/admissions/returning-applications/${encodeURIComponent(selection.id)}`,
+    "PATCH",{status:nextStatus,note:note.trim()});
+   setNotice({e:"",m:`Returning application marked ${nextStatus==="UnderReview"?"Under Review":"Rejected"}.`});
+   setChosen(null);setNote("");queue.refresh();
+  }catch(error){setNotice({e:error.message,m:""});}
+  finally{setBusy(false);}
+ };
+ return <Panel title="Returning Student Applications" text="Review applications from learners who completed their prior programme. V1 supports Under Review and Reject only; approval and enrolment are not enabled." actions={<Button onClick={queue.refresh}>Refresh Returning Applications</Button>}>
+  <Alert e={notice.e||queue.e} m={notice.m}/>
+  <div className="toolbar-grid"><label><span>Application status</span><select value={filter} onChange={e=>{setFilter(e.target.value);setChosen(null);}}><option value="">All statuses</option><option value="Pending">Pending</option><option value="UnderReview">Under Review</option><option value="Rejected">Rejected</option></select></label></div>
+  {queue.loading?<p>Loading returning applications...</p>:<Tbl rows={records} cols={["student_number","first_name","last_name","course_name","target_cycle_code","status","submitted_at"]} act={r=><Button onClick={()=>pick(r)}>Review</Button>}/>}
+  {selection&&<div style={{marginTop:18}}>
+   <h3>Review Application — {selection.student_number}</h3>
+   <div className="object-grid">
+    <div className="object-item"><span>Applicant</span><strong>{[selection.first_name,selection.last_name].filter(Boolean).join(" ")}</strong></div>
+    <div className="object-item"><span>Requested programme</span><strong>{selection.course_name} ({selection.target_course_code})</strong></div>
+    <div className="object-item"><span>Intake cycle</span><strong>{selection.target_cycle_code}</strong></div>
+    <div className="object-item"><span>Current status</span><strong>{selection.status}</strong></div>
+   </div>
+   <div className="form-grid"><label><span>Review notes / rejection reason</span><textarea value={note} rows={3} maxLength={3000} onChange={e=>setNote(e.target.value)} placeholder="Record review notes; rejection requires a reason"/></label></div>
+   <div className="button-row"><button className="button gold" disabled={busy||selection.status==="Rejected"} onClick={()=>change("UnderReview")}>Mark Under Review</button><Button danger onClick={()=>change("Rejected")}>{busy?"Saving...":"Reject Application"}</Button><Button onClick={()=>setChosen(null)}>Close</Button></div>
+   <p style={{marginTop:12}}>Approval and registration are deliberately unavailable until multi-programme enrolment is implemented and tested.</p>
+  </div>}
+ </Panel>;
+}
+// GLEN_RETURNING_ADMISSIONS_V1_END
 
 
 export function Academics({token}){

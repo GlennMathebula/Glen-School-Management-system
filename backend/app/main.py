@@ -582,3 +582,9 @@ from app.redis_health_routes import (
 app.include_router(
     redis_health_router
 )
+
+# Returning learner self-service requests and admissions review queue.
+from app.student_returning_application_routes import router as student_returning_application_router
+from app.staff_returning_application_routes import router as staff_returning_application_router
+app.include_router(student_returning_application_router)
+app.include_router(staff_returning_application_router)
