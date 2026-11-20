@@ -66,6 +66,8 @@ class AcceptApplicationRequest(BaseModel):
     program_start_date: date | None = None
     expected_completion_date: date | None = None
     enforce_documents: bool = True
+    # GM_EDP_MANUAL_DOCUMENTS_V1
+    manual_documents_note: str | None = Field(default=None, max_length=500)
 
 
 class RejectApplicationRequest(BaseModel):
