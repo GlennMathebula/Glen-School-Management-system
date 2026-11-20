@@ -17,3 +17,6 @@ export const resource=(id,t)=>req(`/api/student/learning-resources/${encodeURICo
 export const completion=t=>req("/api/student/completion-documents",{},t);
 export const requestAvatarReplacement=(reason,t)=>req("/api/student/card/avatar/replacement-request",{method:"POST",body:JSON.stringify({reason})},t);
 export const startPayfast=(payload,t)=>req("/api/student/finance/payfast/start",{method:"POST",body:JSON.stringify(payload||{})},t);
+
+export const returningApplications=t=>req("/api/student/returning-applications",{},t);
+export const submitReturningApplication=(p,t)=>req("/api/student/returning-applications",{method:"POST",body:JSON.stringify(p)},t);
