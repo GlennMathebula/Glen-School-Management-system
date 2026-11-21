@@ -19,6 +19,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.pdfs.registrar_signature_asset import get_registrar_signature_image
+
 # ============================================================
 # PATHS
 # ============================================================
@@ -411,34 +413,18 @@ def get_logo():
 
 
 def get_registrar_signature():
-
-    styles = get_styles()
-
-    if (
-        REGISTRAR_SIGNATURE_PATH.exists()
-    ):
-
-        image = Image(
-            str(
-                REGISTRAR_SIGNATURE_PATH
-            )
-        )
-
-        image.drawHeight = (
-            18 * mm
-        )
-
-        image.drawWidth = (
-            45 * mm
-        )
-
+    """Use the secure Railway signature, falling back to a local development asset."""
+    image = get_registrar_signature_image(
+        REGISTRAR_SIGNATURE_PATH,
+        width=45 * mm,
+        height=18 * mm,
+    )
+    if image is not None:
         return image
-
     return Paragraph(
         "<i>Signature not uploaded</i>",
-        styles["small_center"],
+        get_styles()["small_center"],
     )
-
 
 # ============================================================
 # HEADER
