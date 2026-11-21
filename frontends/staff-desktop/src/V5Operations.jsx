@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useState} from "react";
 import * as API from "./api";
 import FinanceEnhancements from "./FinanceEnhancements";
+import PrincipalAnalytics from "./PrincipalAnalytics";
 import { SmartCell, formatBrief, formatField } from "./DataDisplay";
 
 const q=(o={})=>{
@@ -1792,6 +1793,7 @@ export function Principal({token}){
  return <>
   <div className="page-title"><div><span className="eyebrow">Principal</span><h1>Institutional Oversight</h1><p>System overview, staff contact administration and temporary credential resets.</p></div></div>
   <Alert {...st}/>
+   <PrincipalAnalytics token={token}/>
   <Panel title="Overview"><Tbl rows={[overview.data?.data||overview.data||{}]}/></Panel>
   <Panel title="Staff"><Tbl rows={staff.data?.staff||[]} act={r=><Button onClick={()=>select(r)}>Manage</Button>}/></Panel>
   {selected&&<div className="two-col">

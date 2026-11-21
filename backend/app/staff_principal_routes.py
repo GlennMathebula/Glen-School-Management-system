@@ -382,3 +382,60 @@ def principal_support_ticket_update(
                 error
             ),
         ) from error
+
+# ============================================================
+# PRINCIPAL EXECUTIVE REPORTING - PRINCIPAL ROLE ONLY
+# No generic reporting permission grants access to these routes.
+# ============================================================
+from fastapi.responses import Response as _PrincipalReportResponse
+from app.staff_auth_dependency import require_principal as _require_principal
+from app.services.principal_analytics_service import get_principal_statistics as _get_principal_statistics
+from app.services.principal_report_documents import create_pdf as _principal_create_pdf, create_docx as _principal_create_docx
+import re as _principal_re
+
+
+@router.get("/statistics")
+def principal_statistics(
+    response: _PrincipalReportResponse,
+    cycle_code: str | None = Query(default=None, max_length=100),
+    staff: dict = Depends(_require_principal),
+):
+    try:
+        response.headers["Cache-Control"] = "private, no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        return {"success": True, "data": _get_principal_statistics(cycle_code)}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        print(f"ERROR: Principal statistics failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(status_code=500, detail="Principal statistics could not be generated.") from exc
+
+
+@router.get("/statistics/{report_format}")
+def principal_statistics_document(
+    report_format: str,
+    cycle_code: str | None = Query(default=None, max_length=100),
+    staff: dict = Depends(_require_principal),
+):
+    if report_format not in ("pdf", "docx"):
+        raise HTTPException(status_code=404, detail="Unsupported report format.")
+    try:
+        snapshot = _get_principal_statistics(cycle_code)
+        output = _principal_create_pdf(snapshot, staff["staff_code"]) if report_format == "pdf" else _principal_create_docx(snapshot, staff["staff_code"])
+        media_type = "application/pdf" if report_format == "pdf" else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        slug = _principal_re.sub(r"[^A-Za-z0-9-]", "_", cycle_code or "Overall")[:90]
+        return _PrincipalReportResponse(
+            content=output,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="Glen_Moniques_Principal_{slug}_Report.{report_format}"',
+                "Cache-Control": "private, no-store, max-age=0",
+                "Pragma": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        print(f"ERROR: Principal document generation failed: {type(exc).__name__}: {exc}")
+        raise HTTPException(status_code=500, detail="Principal report could not be generated.") from exc
