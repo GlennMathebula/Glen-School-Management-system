@@ -29,6 +29,10 @@ export function Admissions({token}){
  const[requestInstructions,setRequestInstructions]=useState("");
  const[requestDueDate,setRequestDueDate]=useState("");
  const[bulkResult,setBulkResult]=useState([]);
+ const[edpPhysicalDialog,setEdpPhysicalDialog]=useState(null);
+ const[edpPhysicalFileRef,setEdpPhysicalFileRef]=useState("");
+ const[edpPhysicalConfirmed,setEdpPhysicalConfirmed]=useState(false);
+ const[edpPhysicalBusy,setEdpPhysicalBusy]=useState(false);
 
  const list=useGet(path,token);
   const applications=list.data?.applications||[];
@@ -131,15 +135,11 @@ export function Admissions({token}){
  };
 
   const acceptEdpPhysical=()=>{
-   if(!sel||!edpDetail)return;
-   const ref=window.prompt("EDP physical documents: confirm you checked and retained the learner's documents. Enter the physical file location/reference (minimum 10 characters):", "EDP 2026/27 physical learner files");
-   if(ref===null)return;
-   if(ref.trim().length<10){setSt({e:"Provide the physical file location/reference (at least 10 characters).",m:""});return;}
-   if(!window.confirm("Confirm physical documents were received and checked for this EDP learner? The learner will be accepted WITHOUT digitally uploaded documents. This does not register the learner."))return;
-   doPost(`/api/staff/admissions/applications/${sel}/accept`,{
-    funding_type:null,cycle_code:null,program_start_date:null,expected_completion_date:null,
-    enforce_documents:false,manual_documents_note:ref.trim()
-   },"EDP application accepted using physical-document attestation. Registration remains separate.");
+   if(!sel||!edpDetail){setSt({e:"Open an eligible EDP application before proceeding.",m:""});return;}
+   setEdpPhysicalDialog({mode:"single",students:[sel]});
+   setEdpPhysicalFileRef("");
+   setEdpPhysicalConfirmed(false);
+   setSt({e:"",m:""});
   };
 
   const reject=()=>{
@@ -326,23 +326,53 @@ export function Admissions({token}){
   }
  };
 
-  const bulkAcceptEdpPhysical=async()=>{
+  const bulkAcceptEdpPhysical=()=>{
    if(!selectedOnlyEdp){setSt({e:"Select only learners from 2026/27-EDP, SP-210401.",m:""});return;}
-   const ref=window.prompt(`Confirm physical documents were checked and filed for EACH of the ${selected.length} selected EDP learners. Enter their physical file location/reference:`,"EDP 2026/27 physical learner files");
-   if(ref===null)return;
-   if(ref.trim().length<10){setSt({e:"Provide the physical file location/reference (at least 10 characters).",m:""});return;}
-   if(!window.confirm(`Accept ${selected.length} EDP learner(s) using physical-document records? Each learner's action will be audited separately. Registration remains separate.`))return;
+   setEdpPhysicalDialog({mode:"bulk",students:[...selected]});
+   setEdpPhysicalFileRef("");
+   setEdpPhysicalConfirmed(false);
+   setSt({e:"",m:""});
+  };
+
+  // GM_EDP_MANUAL_DIALOG_V1_2: use an in-app form because Electron does not support window.prompt.
+  const submitEdpPhysical=async()=>{
+   if(!edpPhysicalDialog||edpPhysicalBusy)return;
+   const names=edpPhysicalDialog.students;
+   const note=edpPhysicalFileRef.trim();
+   if(note.length<10){setSt({e:"Enter the actual physical file location/reference (minimum 10 characters).",m:""});return;}
+   if(!edpPhysicalConfirmed){setSt({e:"Tick the checkbox only after checking the physical documents for every selected learner.",m:""});return;}
+   if(edpPhysicalDialog.mode==="single"){
+    if(names.length!==1||!edpDetail||sel!==names[0]){setSt({e:"The selected learner changed. Reopen the EDP document form.",m:""});return;}
+   }else if(edpPhysicalDialog.mode==="bulk"){
+    if(!names.length||!names.every(n=>selected.includes(n)&&applications.some(r=>r.student_number===n&&edpRow(r)))){
+     setSt({e:"Your EDP selection changed. Reopen the EDP document form.",m:""});return;
+    }
+   }else{setSt({e:"Invalid EDP document action.",m:""});return;}
+   setEdpPhysicalBusy(true);
+   setSt({e:"",m:""});
    try{
-    const result=await send(token,"/api/staff/admissions/bulk/accept","POST",{
-     student_numbers:selected,funding_type:null,cycle_code:null,
-     program_start_date:null,expected_completion_date:null,
-     enforce_documents:false,manual_documents_note:ref.trim()
-    });
-    setBulkResult(result.results||[]);
-    setSt({e:"",m:`EDP physical-document acceptance: ${result.success_count} successful, ${result.failure_count} failed.`});
-    setSelected([]);list.refresh();
-    if(sel)await open(sel);
-   }catch(e){setSt({e:e.message,m:""});}
+    const body={funding_type:null,cycle_code:null,program_start_date:null,expected_completion_date:null,
+     enforce_documents:false,manual_documents_note:note};
+    if(edpPhysicalDialog.mode==="single"){
+     await send(token,`/api/staff/admissions/applications/${encodeURIComponent(names[0])}/accept`,"POST",body);
+     setSt({e:"",m:"EDP application accepted with recorded physical-document attestation. Registration remains separate."});
+     await open(names[0]);
+    }else{
+     const response=await send(token,"/api/staff/admissions/bulk/accept","POST",{...body,student_numbers:names});
+     setBulkResult(response.results||[]);
+     setSt({e:"",m:`EDP acceptance completed: ${response.success_count} successful, ${response.failure_count} failed. Review the results below.`});
+     setSelected([]);
+     if(sel)await open(sel);
+    }
+    list.refresh();
+    setEdpPhysicalDialog(null);
+    setEdpPhysicalFileRef("");
+    setEdpPhysicalConfirmed(false);
+   }catch(error){
+    setSt({e:error?.message||"EDP acceptance failed. No success was confirmed.",m:""});
+   }finally{
+    setEdpPhysicalBusy(false);
+   }
   };
 
   const bulkAccept=async()=>{
@@ -535,6 +565,31 @@ export function Admissions({token}){
    <button className="button gold" onClick={()=>setPath("/api/staff/admissions/applications"+q({search,status,limit:100}))}>Search</button>
   </div>
  </Panel>
+
+  {edpPhysicalDialog&&<div role="presentation" style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(10,22,36,.68)",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
+   <section role="dialog" aria-modal="true" aria-label="EDP Physical Documents Acceptance" style={{background:"#fff",color:"#172c3b",padding:"24px",borderRadius:"12px",width:"min(620px, 100%)",maxHeight:"85vh",overflow:"auto",boxShadow:"0 16px 50px rgba(0,0,0,.25)"}}>
+    <h2 style={{marginTop:0}}>EDP Physical Documents Acceptance</h2>
+    <p>Cycle <strong>2026/27-EDP</strong> · Programme <strong>SP-210401</strong> · {edpPhysicalDialog.students.length} learner(s).</p>
+    <p>Use this option only where the physical documents have actually been checked and retained. Digital files will remain marked as not uploaded.</p>
+    <label style={{display:"block",margin:"12px 0"}}>
+     <span style={{display:"block",fontWeight:600,marginBottom:"6px"}}>Physical file location / reference *</span>
+     <textarea rows={3} style={{width:"100%",padding:"10px",boxSizing:"border-box",border:"1px solid #9da9b4",borderRadius:"6px"}}
+      placeholder="e.g. EDP 2026/27 Cabinet 2, learner file references"
+      value={edpPhysicalFileRef} onChange={e=>setEdpPhysicalFileRef(e.target.value)} disabled={edpPhysicalBusy} maxLength={500}/>
+    </label>
+    <label style={{display:"flex",gap:"10px",alignItems:"start",margin:"14px 0"}}>
+     <input type="checkbox" checked={edpPhysicalConfirmed} onChange={e=>setEdpPhysicalConfirmed(e.target.checked)} disabled={edpPhysicalBusy}/>
+     <span>I personally confirm that the required physical documents have been checked and retained for <strong>every</strong> learner included in this action.</span>
+    </label>
+    <Alert e={st.e}/>
+    <div className="button-row" style={{display:"flex",justifyContent:"flex-end",gap:"10px",marginTop:"20px"}}>
+     <button className="button light" type="button" disabled={edpPhysicalBusy} onClick={()=>{setEdpPhysicalDialog(null);setEdpPhysicalConfirmed(false);setSt({e:"",m:""});}}>Cancel</button>
+     <button className="button gold" type="button" disabled={edpPhysicalBusy||!edpPhysicalConfirmed||edpPhysicalFileRef.trim().length<10} onClick={submitEdpPhysical}>
+      {edpPhysicalBusy?"Processing...":`Confirm acceptance (${edpPhysicalDialog.students.length})`}
+     </button>
+    </div>
+   </section>
+  </div>}
 
  <Panel title={`Applications (${applications.length})`} text={`${selected.length} application(s) selected.`} actions={<div className="button-row"><button className="button gold" disabled={!selected.length} onClick={bulkAccept}>Accept Selected</button>{selectedOnlyEdp&&<Button onClick={bulkAcceptEdpPhysical}>Accept Selected (EDP Physical Documents)</Button>}<Button danger onClick={bulkReject}>Reject Selected</Button><Button onClick={list.refresh}>Refresh</Button></div>}>
   <Alert e={list.e}/>
