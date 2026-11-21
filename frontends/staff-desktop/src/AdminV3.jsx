@@ -1,15 +1,16 @@
 
 import {useEffect,useMemo,useState} from "react";
 import * as API from "./api";
+import { DetailGrid, SmartCell, formatBrief, formatField } from "./DataDisplay";
 
 const q=(o={})=>{const p=new URLSearchParams();Object.entries(o).forEach(([k,v])=>{if(v!==""&&v!==null&&v!==undefined)p.set(k,v)});const s=p.toString();return s?`?${s}`:""};
-const h=s=>String(s??"").replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase());
-const v=x=>x===null||x===undefined||x===""?"—":typeof x==="boolean"?(x?"Yes":"No"):typeof x==="object"?JSON.stringify(x):String(x);
+const h=s=>formatField(s);
+const v=x=>formatBrief(x);
 
 function Alert({e,m}){return e||m?<div className={`alert ${e?"error":"success"}`}>{e||m}</div>:null}
 function Panel({title,text,children,actions}){return <section className="panel"><div className="panel-head"><div><h2>{title}</h2>{text&&<p>{text}</p>}</div>{actions&&<div className="panel-actions">{actions}</div>}</div><div className="panel-body">{children}</div></section>}
-function Obj({data}){if(!data||typeof data!=="object")return <div className="empty">No data</div>;return <div className="object-grid">{Object.entries(data).map(([k,x])=><div className="object-item" key={k}><span>{h(k)}</span><strong>{v(x)}</strong></div>)}</div>}
-function Tbl({rows=[],cols,act,onRow}){const[f,setF]=useState("");const rr=useMemo(()=>rows.filter(r=>JSON.stringify(r).toLowerCase().includes(f.toLowerCase())),[rows,f]);if(!rows.length)return <div className="empty">No records available.</div>;const kk=cols||Object.keys(rows[0]).filter(k=>typeof rows[0][k]!=="object").slice(0,7);return <><div className="table-tools"><input placeholder="Filter records..." value={f} onChange={e=>setF(e.target.value)}/><span>{rr.length} of {rows.length}</span></div><div className="table-wrap"><table><thead><tr>{kk.map(k=><th key={k}>{h(k)}</th>)}{act&&<th>Actions</th>}</tr></thead><tbody>{rr.map((r,i)=><tr key={r.id||r.student_number||r.staff_code||r.class_code||r.cycle_code||i} className={onRow?"clickable":""} onClick={()=>onRow?.(r)}>{kk.map(k=><td key={k}>{k.toLowerCase().includes("status")?<span className="badge">{v(r[k])}</span>:v(r[k])}</td>)}{act&&<td onClick={e=>e.stopPropagation()}>{act(r)}</td>}</tr>)}</tbody></table></div></>}
+function Obj({data}){return <DetailGrid data={data} />;}
+function Tbl({rows=[],cols,act,onRow}){const[f,setF]=useState("");const rr=useMemo(()=>rows.filter(r=>JSON.stringify(r).toLowerCase().includes(f.toLowerCase())),[rows,f]);if(!rows.length)return <div className="empty">No records available.</div>;const kk=cols||Object.keys(rows[0]).filter(k=>typeof rows[0][k]!=="object").slice(0,7);return <><div className="table-tools"><input placeholder="Filter records..." value={f} onChange={e=>setF(e.target.value)}/><span>{rr.length} of {rows.length}</span></div><div className="table-wrap"><table><thead><tr>{kk.map(k=><th key={k}>{h(k)}</th>)}{act&&<th>Actions</th>}</tr></thead><tbody>{rr.map((r,i)=><tr key={r.id||r.student_number||r.staff_code||r.class_code||r.cycle_code||i} className={onRow?"clickable":""} onClick={()=>onRow?.(r)}>{kk.map(k=><td key={k}>{k.toLowerCase().includes("status")?<span className="badge">{v(r[k])}</span>:<SmartCell fieldName={k} value={r[k]} />}</td>)}{act&&<td onClick={e=>e.stopPropagation()}>{act(r)}</td>}</tr>)}</tbody></table></div></>}
 function useGet(path,token){const[s,setS]=useState({data:null,e:"",loading:false,n:0});useEffect(()=>{let on=true;if(!path)return;setS(x=>({...x,loading:true,e:""}));API.request(path,{},token).then(data=>on&&setS(x=>({...x,data,loading:false}))).catch(e=>on&&setS(x=>({...x,e:e.message,loading:false})));return()=>{on=false}},[path,token,s.n]);return {...s,refresh:()=>setS(x=>({...x,n:x.n+1}))}}
 async function send(token,path,method,body){return API.request(path,{method,...(body===undefined?{}:{body:JSON.stringify(body)})},token)}
 const Button=({children,onClick,danger=false})=><button className={`button ${danger?"danger":"light"}`} onClick={onClick}>{children}</button>;
