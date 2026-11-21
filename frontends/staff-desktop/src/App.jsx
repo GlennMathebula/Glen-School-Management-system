@@ -16,6 +16,7 @@ import * as API from "./api";
 import { useAuth } from "./auth";
 import * as V3 from "./AdminV3";
 import * as V5 from "./V5Operations";
+import { DetailGrid, SmartCell, formatBrief, formatField } from "./DataDisplay";
 
 // ============================================================
 // COMMON UI
@@ -47,7 +48,7 @@ function Badge({
 }) {
   return (
     <span className="badge">
-      {value ?? "—"}
+      {formatBrief(value)}
     </span>
   );
 }
@@ -90,56 +91,9 @@ function Empty({
   );
 }
 
-function humanize(key) {
-  return String(key || "")
-    .replace(/_/g, " ")
-    .replace(
-      /\b\w/g,
-      (letter) =>
-        letter.toUpperCase(),
-    );
-}
+function humanize(key) { return formatField(key); }
 
-function displayValue(value) {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return "—";
-  }
-
-  if (
-    typeof value === "boolean"
-  ) {
-    return value
-      ? "Yes"
-      : "No";
-  }
-
-  if (
-    typeof value === "object"
-  ) {
-    if (Array.isArray(value)) {
-      return `${value.length} item(s)`;
-    }
-
-    return Object.entries(value)
-      .slice(0, 3)
-      .map(
-        ([key, nested]) =>
-          `${humanize(key)}: ${
-            typeof nested ===
-            "object"
-              ? "…"
-              : String(nested)
-          }`,
-      )
-      .join(" Â· ");
-  }
-
-  return String(value);
-}
+function displayValue(value) { return formatBrief(value); }
 
 const ARRAY_KEYS = [
   "applications",
@@ -200,16 +154,14 @@ function findRows(data) {
     return findRows(data.data);
   }
 
-  for (
-    const value of Object.values(
-      data,
-    )
-  ) {
-    if (
-      Array.isArray(value) &&
-      value.length
-    ) {
-      return value;
+  // Avoid treating OAuth scopes and embedded arrays as full result tables.
+  const meaningful = Object.entries(data).filter(([key]) =>
+    !["success", "message", "count", "total", "limit", "offset", "page", "pages"].includes(key));
+  if (meaningful.length === 1) {
+    const only = meaningful[0][1];
+    if (Array.isArray(only) && only.length &&
+        only.every(row => row && typeof row === "object" && !Array.isArray(row))) {
+      return only;
     }
   }
 
@@ -353,9 +305,7 @@ function DataTable({
                             }
                           />
                         ) : (
-                          displayValue(
-                            row[key],
-                          )
+                          <SmartCell value={row[key]} fieldName={key} />
                         )}
                       </td>
                     ),
@@ -399,35 +349,7 @@ function ObjectView({
       ? data.data
       : data;
 
-  return (
-    <div className="object-grid">
-      {Object.entries(source)
-        .filter(
-          ([key]) =>
-            ![
-              "success",
-            ].includes(key),
-        )
-        .map(
-          ([key, value]) => (
-            <div
-              className="object-item"
-              key={key}
-            >
-              <span>
-                {humanize(key)}
-              </span>
-
-              <strong>
-                {displayValue(
-                  value,
-                )}
-              </strong>
-            </div>
-          ),
-        )}
-    </div>
-  );
+  return <DetailGrid data={source} />;
 }
 
 // ============================================================
@@ -1287,7 +1209,7 @@ function DashboardPage({
           <p>
             {staff.job_title ||
               "Staff"}{" "}
-            Â·{" "}
+            ·{" "}
             {staff.department ||
               "Glen Moniques"}
           </p>
@@ -1596,7 +1518,7 @@ function StudentRecordsPage({token}) {
                 </span>
                 <small>
                   {item.course_name || item.course_code || "No registration"}
-                  {" Â· "}
+                  {" · "}
                   {item.registration_status || item.app_status || "—"}
                 </small>
               </button>
@@ -2120,7 +2042,7 @@ function DesktopShell() {
     {
       label: "System Management",
       path: "/system",
-      icon: "âš™",
+      icon: "⚙",
       show: any([
         "MANAGE_SYSTEM_SETTINGS",
         "MANAGE_STAFF_ACCOUNTS",

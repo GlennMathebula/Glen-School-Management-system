@@ -203,3 +203,38 @@ textarea{min-height:88px;resize:vertical}
     grid-template-columns:1fr;
   }
 }
+
+/* GM_STAFF_DISPLAY_POLISH_V1 */
+
+/* Glen Moniques Staff Desktop - human-readable structured records, V1 */
+.pretty-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pretty-item{min-width:0;padding:14px;border-radius:11px;background:linear-gradient(145deg,#fff,#f8fafc);border:1px solid #e0e8ee;min-height:66px;gap:7px}
+.pretty-item.pretty-wide{grid-column:1/-1}
+.pretty-label,.object-item span.pretty-label{font-size:10px;font-weight:750;letter-spacing:.015em;color:#64778b}
+.pretty-value{min-width:0;color:#17324d;font-weight:570;font-size:12px;line-height:1.55;overflow-wrap:anywhere;white-space:normal}
+.pretty-value strong{font-size:inherit}
+.pretty-nested-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:9px;margin:3px 0}
+.pretty-nested-item{padding:12px;background:#fff;border:1px solid #e6edf2;border-radius:9px;min-width:0}
+.pretty-nested-label{display:block;font-size:9px;letter-spacing:.025em;color:#698099;font-weight:700;margin-bottom:5px}
+.pretty-nested-item .pretty-value{font-size:11px}
+.pretty-muted,.pretty-empty{color:#8594a3;font-weight:500;font-style:italic}
+.pretty-redacted{color:#7f6070;font-weight:650}
+.pretty-status{display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:800;border:1px solid transparent}
+.pretty-status-on{background:#e7f7ee;border-color:#b9e3ca;color:#176845}
+.pretty-status-off{background:#f4f0ed;border-color:#e4d3c8;color:#886044}
+.pretty-date{font-variant-numeric:tabular-nums}
+.pretty-tags{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.pretty-tag{background:#eef3f8;border:1px solid #dce6ee;border-radius:6px;padding:5px 8px;font-size:10px;color:#294b6b;font-weight:650;overflow-wrap:anywhere}
+.pretty-table-wrap{width:100%;max-width:100%;overflow-x:auto;border:1px solid #e0e7ed;border-radius:10px;background:#fff}
+.pretty-table{min-width:520px;width:100%;border-collapse:collapse}
+.pretty-table th{background:#eef3f7;padding:11px 13px;font-size:10px;letter-spacing:.02em;color:#456078}
+.pretty-table td{padding:12px 13px;border-top:1px solid #e8edf1;color:#263f58;font-size:11px;line-height:1.5;vertical-align:top;white-space:normal}
+.pretty-table tbody tr:nth-child(even){background:#fbfcfe}
+.pretty-table .pretty-subject-name{font-weight:800;color:#17324d}
+.pretty-cell-details{max-width:440px;min-width:130px}
+.pretty-cell-details>summary{cursor:pointer;color:#195488;font-weight:750;font-size:10px;list-style:revert}
+.pretty-cell-details[open]{min-width:300px}
+.pretty-cell-expanded{max-width:660px;max-height:360px;overflow:auto;margin-top:8px;padding:9px;border-radius:9px;background:#f7fafc;border:1px solid #e4ebf1}
+.pretty-cell-expanded .pretty-value{font-size:10px}
+.sidebar nav a b{font-size:16px;line-height:1.1;font-weight:750}
+@media(max-width:780px){.pretty-grid,.pretty-nested-grid{grid-template-columns:1fr}.pretty-table{min-width:480px}}
