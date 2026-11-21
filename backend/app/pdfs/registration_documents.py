@@ -11,6 +11,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Image,
+    KeepTogether,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -1127,7 +1128,10 @@ def build_module_section(
         table
     )
 
-    return story
+    # A section heading must never be stranded at the bottom of a page.
+    # If the heading and module table do not fit, move both to the next
+    # page. Long tables can still split across pages with repeated headers.
+    return [KeepTogether(story)]
 
 
 # ============================================================
